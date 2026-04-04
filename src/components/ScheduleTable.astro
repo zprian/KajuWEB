@@ -1,0 +1,51 @@
+---
+import { useTranslations, type Lang } from '../i18n/utils';
+
+export interface Props {
+  lang: Lang;
+  entries?: {
+    day_es: string; day_en: string; day_ca: string;
+    time: string;
+    class_es: string; class_en: string; class_ca: string;
+    location: string;
+  }[];
+}
+
+const { lang, entries = [] } = Astro.props;
+const t = useTranslations(lang);
+
+const dayKey = `day_${lang}` as const;
+const classKey = `class_${lang}` as const;
+
+const defaultEntries = [
+  { day_es: 'Lunes', day_en: 'Monday', day_ca: 'Dilluns', time: '19:30 – 21:00', class_es: 'Adultos – Todos los niveles', class_en: 'Adults – All levels', class_ca: 'Adults – Tots els nivells', location: 'Dojo Principal' },
+  { day_es: 'Miércoles', day_en: 'Wednesday', day_ca: 'Dimecres', time: '19:30 – 21:00', class_es: 'Adultos – Todos los niveles', class_en: 'Adults – All levels', class_ca: 'Adults – Tots els nivells', location: 'Dojo Principal' },
+  { day_es: 'Viernes', day_en: 'Friday', day_ca: 'Divendres', time: '19:30 – 21:00', class_es: 'Adultos – Avanzado', class_en: 'Adults – Advanced', class_ca: 'Adults – Avançat', location: 'Dojo Principal' },
+  { day_es: 'Sábado', day_en: 'Saturday', day_ca: 'Dissabte', time: '10:00 – 12:00', class_es: 'Jóvenes / Familia', class_en: 'Youth / Family', class_ca: 'Joves / Família', location: 'Dojo Principal' },
+];
+
+const rows = entries.length > 0 ? entries : defaultEntries;
+---
+
+<div class="overflow-x-auto rounded-xl border border-white/10">
+  <table class="w-full text-sm">
+    <thead>
+      <tr class="bg-kaju-gray text-white uppercase text-xs tracking-wider">
+        <th class="px-4 py-3 text-left">{t.schedule.day}</th>
+        <th class="px-4 py-3 text-left">{t.schedule.time}</th>
+        <th class="px-4 py-3 text-left">{t.schedule.class}</th>
+        <th class="px-4 py-3 text-left hidden sm:table-cell">{t.schedule.location}</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-white/5">
+      {rows.map((row, i) => (
+        <tr class:list={['transition hover:bg-white/5', i % 2 === 0 ? 'bg-kaju-dark' : 'bg-kaju-gray/30']}>
+          <td class="px-4 py-3 font-medium text-white">{(row as any)[dayKey] ?? row.day_es}</td>
+          <td class="px-4 py-3 text-gray-300 whitespace-nowrap">{row.time}</td>
+          <td class="px-4 py-3 text-gray-300">{(row as any)[classKey] ?? row.class_es}</td>
+          <td class="px-4 py-3 text-gray-400 hidden sm:table-cell">{row.location}</td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+</div>

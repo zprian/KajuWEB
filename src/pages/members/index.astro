@@ -1,0 +1,93 @@
+---
+export const prerender = false;
+import MembersLayout from '../../layouts/MembersLayout.astro';
+import { getLangFromUrl, useTranslations, BELTS, BELT_ORDER, canAccessBelt } from '../../i18n/utils';
+import { createSupabaseServerClient } from '../../lib/supabase-server';
+
+const lang = getLangFromUrl(Astro.url);
+const t = useTranslations(lang);
+
+const supabase = createSupabaseServerClient(Astro.cookies);
+const { data: { user } } = await supabase.auth.getUser();
+
+// Fetch profile
+const { data: profile } = await supabase
+  .from('profiles')
+  .select('*')
+  .eq('id', user!.id)
+  .single();
+
+const userBelt = profile?.belt ?? 'white';
+const userName = profile ? `${profile.name} ${profile.surname}` : user!.email ?? '';
+
+// Available belts for this user
+const accessibleBelts = BELTS.filter(b => canAccessBelt(userBelt, b));
+---
+
+<MembersLayout title={t.members.dashboard} lang={lang} userName={userName} belt={userBelt}>
+  <div class="space-y-8">
+    <div>
+      <h1 class="text-2xl font-bold text-white mb-1">{t.members.dashboard}</h1>
+      <p class="text-gray-400 text-sm">
+        {t.members.welcome}, <span class="text-white font-medium">{userName}</span>
+      </p>
+    </div>
+
+    <!-- Belt display -->
+    <div class="bg-kaju-gray rounded-2xl p-6">
+      <h2 class="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-4">{t.members.belt}</h2>
+      <div class="flex flex-wrap gap-2">
+        {BELTS.map(belt => {
+          const accessible = canAccessBelt(userBelt, belt);
+          const isCurrent = belt === userBelt;
+          return (
+            <div class:list={[
+              'flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition',
+              isCurrent ? 'bg-kaju-red/20 border border-kaju-red/40 text-white' :
+              accessible ? 'bg-white/5 text-gray-300' : 'opacity-30 text-gray-600'
+            ]}>
+              <div class="w-4 h-1.5 rounded-full" style={`background: var(--belt-${belt})`}></div>
+              {t.members.beltLabel[belt as keyof typeof t.members.beltLabel]}
+              {isCurrent && <span class="text-xs text-white ml-1">✓</span>}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+
+    <!-- Available content -->
+    <div>
+      <h2 class="text-lg font-bold text-white mb-4">{t.members.content}</h2>
+      {accessibleBelts.length === 0 ? (
+        <p class="text-gray-400">{t.members.noContent}</p>
+      ) : (
+        <div class="grid sm:grid-cols-2 gap-4">
+          {accessibleBelts.map(belt => (
+            <a
+              href={`/members/content/${belt}`}
+              class="group bg-kaju-gray hover:bg-kaju-gray/80 rounded-xl p-5 border border-white/5 hover:border-white/30 transition"
+            >
+              <div class="flex items-center gap-3 mb-2">
+                <div class="w-6 h-2 rounded-full" style={`background: var(--belt-${belt})`}></div>
+                <span class="font-semibold text-white capitalize">
+                  {t.members.beltLabel[belt as keyof typeof t.members.beltLabel]}
+                </span>
+              </div>
+              <p class="text-sm text-gray-400 group-hover:text-gray-300 transition">
+                {t.members.content} →
+              </p>
+            </a>
+          ))}
+        </div>
+      )}
+    </div>
+  </div>
+</MembersLayout>
+
+<style>
+  :root {
+    --belt-white: #ffffff; --belt-yellow: #f5c518; --belt-orange: #f97316;
+    --belt-purple: #a855f7; --belt-blue: #3b82f6; --belt-green: #22c55e;
+    --belt-brown: #92400e; --belt-black: #555;
+  }
+</style>

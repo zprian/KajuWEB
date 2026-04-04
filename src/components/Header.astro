@@ -1,0 +1,89 @@
+---
+import LanguageSelector from './LanguageSelector.astro';
+import { useTranslations, getLocalePath, type Lang } from '../i18n/utils';
+
+export interface Props {
+  lang: Lang;
+}
+
+const { lang } = Astro.props;
+const t = useTranslations(lang);
+
+const navItems = [
+  { href: '#historia', label: t.nav.historia },
+  { href: '#angel', label: t.nav.angel },
+  { href: '#catalunya', label: t.nav.catalunya },
+  { href: '#horario', label: t.nav.horario },
+  { href: '#noticias', label: t.nav.noticias },
+];
+---
+
+<header class="sticky top-0 z-50 bg-kaju-dark/95 backdrop-blur border-b border-kaju-gray">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex items-center justify-between h-16">
+      <!-- Logo -->
+      <a href={getLocalePath(lang)} class="flex items-center gap-3">
+        <img src="/images/logo.png" alt="Kajukenbo Catalunya" class="h-10 w-auto" onerror="this.style.display='none'" />
+        <span class="text-white font-heading font-bold text-xl tracking-wide">Kajukenbo</span>
+      </a>
+
+      <!-- Desktop Nav -->
+      <nav class="hidden lg:flex items-center gap-1">
+        {navItems.map(item => (
+          <a
+            href={item.href}
+            class="px-3 py-2 text-sm text-gray-300 hover:text-white transition rounded-lg hover:bg-kaju-gray"
+          >
+            {item.label}
+          </a>
+        ))}
+      </nav>
+
+      <!-- Right actions -->
+      <div class="flex items-center gap-3">
+        <LanguageSelector lang={lang} />
+        <a
+          href={getLocalePath(lang, 'members')}
+          class="hidden sm:inline-flex items-center px-4 py-1.5 rounded-lg bg-kaju-red text-white text-sm font-medium hover:bg-red-700 transition"
+        >
+          {t.nav.miembros}
+        </a>
+
+        <!-- Mobile menu button -->
+        <button
+          id="menu-btn"
+          class="lg:hidden p-2 rounded-lg text-gray-400 hover:text-white hover:bg-kaju-gray transition"
+          aria-label="Open menu"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Mobile Nav -->
+    <nav id="mobile-menu" class="hidden lg:hidden pb-3 border-t border-kaju-gray mt-2 pt-3">
+      {navItems.map(item => (
+        <a
+          href={item.href}
+          class="block px-3 py-2 text-sm text-gray-300 hover:text-white transition rounded-lg"
+        >
+          {item.label}
+        </a>
+      ))}
+      <a
+        href={getLocalePath(lang, 'members')}
+        class="block mt-2 px-3 py-2 text-sm text-kaju-red font-medium"
+      >
+        {t.nav.miembros}
+      </a>
+    </nav>
+  </div>
+</header>
+
+<script>
+  const btn = document.getElementById('menu-btn');
+  const menu = document.getElementById('mobile-menu');
+  btn?.addEventListener('click', () => menu?.classList.toggle('hidden'));
+</script>

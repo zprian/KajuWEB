@@ -1,0 +1,50 @@
+---
+import { useTranslations, type Lang } from '../i18n/utils';
+
+export interface Props {
+  lang: Lang;
+}
+
+const { lang } = Astro.props;
+const t = useTranslations(lang);
+
+// Build switch URLs: strip existing lang prefix, add new one
+const currentPath = Astro.url.pathname.replace(/^\/(en|ca)/, '') || '/';
+
+const langOptions: { code: Lang; label: string; href: string }[] = [
+  { code: 'es', label: 'ES', href: currentPath },
+  { code: 'en', label: 'EN', href: `/en${currentPath === '/' ? '' : currentPath}` },
+  { code: 'ca', label: 'CA', href: `/ca${currentPath === '/' ? '' : currentPath}` },
+];
+---
+
+<div class="relative group">
+  <button
+    class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-gray-300 hover:text-white hover:bg-kaju-gray transition"
+    aria-haspopup="true"
+    aria-expanded="false"
+  >
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"/>
+    </svg>
+    <span class="font-medium uppercase">{lang}</span>
+    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+    </svg>
+  </button>
+
+  <div class="absolute right-0 mt-1 w-36 bg-kaju-gray rounded-xl shadow-xl border border-white/10 overflow-hidden opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 z-50">
+    {langOptions.map(option => (
+      <a
+        href={option.href}
+        class:list={[
+          'flex items-center gap-2 px-4 py-2 text-sm hover:bg-white/10 transition',
+          option.code === lang ? 'text-white font-semibold' : 'text-gray-300',
+        ]}
+      >
+        <span class="w-6 text-xs uppercase font-bold text-center">{option.code}</span>
+        <span>{t.lang[option.code]}</span>
+      </a>
+    ))}
+  </div>
+</div>

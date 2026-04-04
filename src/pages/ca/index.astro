@@ -1,0 +1,86 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import ScheduleTable from '../../components/ScheduleTable.astro';
+import NewsGrid from '../../components/NewsGrid.astro';
+import InstagramEmbed from '../../components/InstagramEmbed.astro';
+import { useTranslations } from '../../i18n/utils';
+
+const lang = 'ca';
+const t = useTranslations(lang);
+---
+
+<Layout title="Kajukenbo Catalunya" lang={lang}>
+  <!-- Hero -->
+  <section class="relative overflow-hidden bg-gradient-to-br from-kaju-dark via-kaju-gray to-kaju-dark">
+    <div class="absolute inset-0 bg-kaju-red/10 mix-blend-overlay"></div>
+    <div class="relative max-w-7xl mx-auto px-4 py-24 sm:py-36 flex flex-col items-center text-center">
+      <span class="inline-block mb-4 px-4 py-1 rounded-full border border-white/40 text-white text-sm font-medium tracking-wide uppercase">
+        {t.hero.subtitle}
+      </span>
+      <h1 class="font-heading text-5xl sm:text-7xl font-bold text-white mb-6 leading-tight">
+        Kajukenbo
+      </h1>
+      <p class="text-xl text-gray-300 max-w-xl mb-8">Catalunya</p>
+      <a href="#historia" class="inline-flex items-center gap-2 px-6 py-3 bg-kaju-red hover:bg-red-700 text-white rounded-xl font-medium transition">
+        {t.hero.cta}
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+        </svg>
+      </a>
+    </div>
+  </section>
+
+  <div class="max-w-7xl mx-auto px-4 py-16">
+    <div class="flex flex-col xl:flex-row gap-10">
+      <div class="flex-1 min-w-0 space-y-20">
+
+        <section id="historia" class="scroll-mt-20">
+          <h2 class="section-title">{t.sections.historia}</h2>
+          <div class="prose-kaju">
+            <p>El Kajukenbo és un art marcial nascut a Hawaii cap al 1947. El seu nom és un acrònim que reflecteix les disciplines que el componen: <strong>KA</strong>rate, <strong>JU</strong>-jitsu/Judo, <strong>KEN</strong>po i <strong>BO</strong>xeig.</p>
+            <p>Va ser creat per un grup de cinc mestres conegut com «The Black Belt Society»: Adriano Emperado (Kenpo/Escrima), Joe Holck (Judo), Frank Ordonez (Ju-Jitsu), Clarence Chang (Chuan Fa) i George Chang (Tang Soo Do). El seu objectiu era crear un sistema de combat real i efectiu adaptat a les dures condicions dels barris d'Honolulu.</p>
+            <p>Des dels seus inicis al Palama Settlement d'Honolulu, el Kajukenbo es va estendre per tot el món i és reconegut com un dels primers sistemes d'arts marcials mixtes (MMA) de la història moderna.</p>
+          </div>
+        </section>
+
+        <section id="angel" class="scroll-mt-20">
+          <h2 class="section-title">{t.sections.angel}</h2>
+          <div class="prose-kaju">
+            <p>Ángel García Soldado és un dels màxims responsables de la difusió del Kajukenbo a Espanya i Europa. Va introduir l'art a la península Ibèrica i ha format centenars de practicants al llarg de dècades de dedicació.</p>
+            <p>Amb la seva visió pedagògica i el seu rigor tècnic, Ángel ha contribuït a preservar l'essència del Kajukenbo original mentre l'adapta al context europeu, mantenint sempre el respecte per les arrels del sistema creat a Hawaii.</p>
+          </div>
+        </section>
+
+        <section id="catalunya" class="scroll-mt-20">
+          <h2 class="section-title">{t.sections.catalunya}</h2>
+          <div class="prose-kaju">
+            <p>Kajukenbo Catalunya és la representació oficial de l'art marcial a la comunitat autònoma, compromesa amb la difusió d'un Kajukenbo autèntic i de qualitat.</p>
+            <p>Oferim classes per a totes les edats i nivells, des d'iniciació fins a graus avançats, amb instructors titulats i àmplia experiència. El nostre objectiu és transmetre no només les tècniques marcials, sinó també els valors de disciplina, respecte i superació personal que caracteritzen el Kajukenbo.</p>
+          </div>
+        </section>
+
+        <section id="horario" class="scroll-mt-20">
+          <h2 class="section-title">{t.sections.horario}</h2>
+          <ScheduleTable lang={lang} />
+        </section>
+
+        <section id="noticias" class="scroll-mt-20">
+          <h2 class="section-title">{t.sections.noticias}</h2>
+          <NewsGrid lang={lang} />
+        </section>
+      </div>
+
+      <aside class="xl:w-80 shrink-0">
+        <div class="sticky top-24">
+          <InstagramEmbed lang={lang} />
+        </div>
+      </aside>
+    </div>
+  </div>
+</Layout>
+
+<style>
+  .section-title { @apply font-heading text-3xl font-bold text-white mb-6 pb-3 border-b border-white/10; }
+  .prose-kaju { @apply space-y-4 text-gray-300 leading-relaxed text-base; }
+  .prose-kaju strong { @apply text-white font-semibold; }
+</style>

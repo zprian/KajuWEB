@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:docs.astro.build)",
+      "WebFetch(domain:supabase.com)",
+      "WebFetch(domain:tina.io)",
+      "Read(//Users/abelgomez/.nvm/versions/node/**)",
+      "Read(//opt/homebrew/opt/**)",
+      "Read(//usr/local/bin/**)",
+      "Bash(export NVM_DIR=\"$HOME/.nvm\")",
+      "Bash(source \"$NVM_DIR/nvm.sh\")",
+      "Bash(nvm use:*)",
+      "Bash(npm create:*)",
+      "Bash(npx astro:*)"
+    ]
+  }
+}

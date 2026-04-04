@@ -1,0 +1,73 @@
+---
+import { useTranslations, type Lang } from '../i18n/utils';
+
+export interface Props {
+  lang: Lang;
+  posts?: {
+    title_es: string; title_en: string; title_ca: string;
+    summary_es: string; summary_en: string; summary_ca: string;
+    date: string;
+    image?: string;
+    slug: string;
+  }[];
+}
+
+const { lang, posts = [] } = Astro.props;
+const t = useTranslations(lang);
+
+const titleKey = `title_${lang}` as const;
+const summaryKey = `summary_${lang}` as const;
+
+const defaultPosts = [
+  {
+    title_es: 'Próximo Seminario de Kajukenbo',
+    title_en: 'Upcoming Kajukenbo Seminar',
+    title_ca: 'Proper Seminari de Kajukenbo',
+    summary_es: 'Os informamos sobre el próximo seminario que tendrá lugar en Barcelona. Una oportunidad única de aprender con los mejores instructores.',
+    summary_en: 'We inform you about the upcoming seminar taking place in Barcelona. A unique opportunity to learn from the best instructors.',
+    summary_ca: 'Us informem sobre el proper seminari que tindrà lloc a Barcelona. Una oportunitat única d\'aprendre amb els millors instructors.',
+    date: '2026-05-15',
+    slug: 'seminario-2026',
+  },
+  {
+    title_es: 'Resultados del último examen de cinturones',
+    title_en: 'Results from the last belt grading',
+    title_ca: 'Resultats de l\'últim examen de cinturons',
+    summary_es: 'Felicitaciones a todos los alumnos que superaron el examen de cinturones del pasado mes.',
+    summary_en: 'Congratulations to all students who passed last month\'s belt grading examination.',
+    summary_ca: 'Felicitacions a tots els alumnes que van superar l\'examen de cinturons del mes passat.',
+    date: '2026-03-20',
+    slug: 'examen-marzo-2026',
+  },
+];
+
+const news = posts.length > 0 ? posts : defaultPosts;
+
+function formatDate(dateStr: string, locale: string) {
+  return new Date(dateStr).toLocaleDateString(
+    locale === 'en' ? 'en-GB' : locale === 'ca' ? 'ca-ES' : 'es-ES',
+    { year: 'numeric', month: 'long', day: 'numeric' }
+  );
+}
+---
+
+<div class="grid sm:grid-cols-2 gap-5">
+  {news.map(post => (
+    <article class="bg-kaju-gray rounded-2xl overflow-hidden hover:ring-1 hover:ring-white/40 transition group">
+      {post.image && (
+        <img src={post.image} alt={(post as any)[titleKey] ?? post.title_es} class="w-full h-40 object-cover" />
+      )}
+      <div class="p-5">
+        <p class="text-xs text-white uppercase tracking-wide mb-2">
+          {t.news.publishedOn} {formatDate(post.date, lang)}
+        </p>
+        <h3 class="text-white font-bold text-lg mb-2 group-hover:text-white transition leading-snug">
+          {(post as any)[titleKey] ?? post.title_es}
+        </h3>
+        <p class="text-gray-400 text-sm line-clamp-3">
+          {(post as any)[summaryKey] ?? post.summary_es}
+        </p>
+      </div>
+    </article>
+  ))}
+</div>

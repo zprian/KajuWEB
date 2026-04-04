@@ -1,0 +1,107 @@
+---
+import Layout from '../layouts/Layout.astro';
+import ScheduleTable from '../components/ScheduleTable.astro';
+import NewsGrid from '../components/NewsGrid.astro';
+import InstagramEmbed from '../components/InstagramEmbed.astro';
+import { useTranslations } from '../i18n/utils';
+
+const lang = 'es';
+const t = useTranslations(lang);
+---
+
+<Layout title="Kajukenbo Catalunya" lang={lang}>
+  <!-- Hero -->
+  <section class="relative overflow-hidden bg-gradient-to-br from-kaju-dark via-kaju-gray to-kaju-dark">
+    <div class="absolute inset-0 bg-kaju-red/10 mix-blend-overlay"></div>
+    <div class="relative max-w-7xl mx-auto px-4 py-24 sm:py-36 flex flex-col items-center text-center">
+      <span class="inline-block mb-4 px-4 py-1 rounded-full border border-white/40 text-white text-sm font-medium tracking-wide uppercase">
+        {t.hero.subtitle}
+      </span>
+      <h1 class="font-heading text-5xl sm:text-7xl font-bold text-white mb-6 leading-tight">
+        Kajukenbo
+      </h1>
+      <p class="text-xl text-gray-300 max-w-xl mb-8">
+        Catalunya
+      </p>
+      <a href="#historia" class="inline-flex items-center gap-2 px-6 py-3 bg-kaju-red hover:bg-red-700 text-white rounded-xl font-medium transition">
+        {t.hero.cta}
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+        </svg>
+      </a>
+    </div>
+  </section>
+
+  <!-- Main content + Instagram sidebar -->
+  <div class="max-w-7xl mx-auto px-4 py-16">
+    <div class="flex flex-col xl:flex-row gap-10">
+
+      <!-- Left: main content -->
+      <div class="flex-1 min-w-0 space-y-20">
+
+        <!-- Historia del Kajukenbo -->
+        <section id="historia" class="scroll-mt-20">
+          <h2 class="section-title">{t.sections.historia}</h2>
+          <div class="prose-kaju">
+            <p>El Kajukenbo es un arte marcial nacido en Hawaii alrededor de 1947. Su nombre es un acrónimo que refleja las disciplinas que lo componen: <strong>KA</strong>rate, <strong>JU</strong>-jitsu / Judo, <strong>KEN</strong>po y <strong>BO</strong>xeo.</p>
+            <p>Fue creado por un grupo de cinco maestros conocido como «The Black Belt Society»: Adriano Emperado (Kenpo/Escrima), Joe Holck (Judo), Frank Ordonez (Ju-Jitsu), Clarence Chang (Chuan Fa) y George Chang (Tang Soo Do). Su objetivo era crear un sistema de combate real y efectivo adaptado a las duras condiciones de los barrios de Honolulu.</p>
+            <p>Desde sus inicios en el Palama Settlement de Honolulu, el Kajukenbo se extendió por el mundo entero, siendo reconocido como uno de los primeros sistemas de artes marciales mixtas (MMA) de la historia moderna.</p>
+          </div>
+        </section>
+
+        <!-- Ángel García Soldado -->
+        <section id="angel" class="scroll-mt-20">
+          <h2 class="section-title">{t.sections.angel}</h2>
+          <div class="prose-kaju">
+            <p>Ángel García Soldado es uno de los máximos responsables de la difusión del Kajukenbo en España y Europa. Introdujo el arte en la península ibérica y ha formado a centenares de practicantes a lo largo de décadas de dedicación.</p>
+            <p>Con su visión pedagógica y su rigor técnico, Ángel ha contribuido a preservar la esencia del Kajukenbo original mientras lo adapta al contexto europeo, siempre manteniendo el respeto por las raíces del sistema creado en Hawaii.</p>
+            <p>Su linaje directo garantiza la autenticidad de la enseñanza y la fidelidad al espíritu original del arte marcial.</p>
+          </div>
+        </section>
+
+        <!-- Kajukenbo Catalunya -->
+        <section id="catalunya" class="scroll-mt-20">
+          <h2 class="section-title">{t.sections.catalunya}</h2>
+          <div class="prose-kaju">
+            <p>Kajukenbo Catalunya es la representación oficial del arte marcial en la comunidad autónoma, comprometida con la difusión de un Kajukenbo auténtico y de calidad.</p>
+            <p>Ofrecemos clases para todas las edades y niveles, desde iniciación hasta grados avanzados, con instructores titulados y con amplia experiencia. Nuestro objetivo es transmitir no solo las técnicas marciales, sino también los valores de disciplina, respeto y superación personal que caracterizan al Kajukenbo.</p>
+            <p>Contamos con un dojo equipado y un ambiente acogedor donde practicantes de todas las edades pueden desarrollar su potencial.</p>
+          </div>
+        </section>
+
+        <!-- Horario -->
+        <section id="horario" class="scroll-mt-20">
+          <h2 class="section-title">{t.sections.horario}</h2>
+          <ScheduleTable lang={lang} />
+        </section>
+
+        <!-- Noticias -->
+        <section id="noticias" class="scroll-mt-20">
+          <h2 class="section-title">{t.sections.noticias}</h2>
+          <NewsGrid lang={lang} />
+        </section>
+
+      </div>
+
+      <!-- Right: Instagram sidebar -->
+      <aside class="xl:w-80 shrink-0">
+        <div class="sticky top-24">
+          <InstagramEmbed lang={lang} />
+        </div>
+      </aside>
+
+    </div>
+  </div>
+</Layout>
+
+<style>
+  .section-title {
+    @apply font-heading text-3xl font-bold text-white mb-6 pb-3 border-b border-white/10;
+  }
+  .prose-kaju {
+    @apply space-y-4 text-gray-300 leading-relaxed text-base;
+  }
+  .prose-kaju strong {
+    @apply text-white font-semibold;
+  }
+</style>
