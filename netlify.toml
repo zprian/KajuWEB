@@ -4,6 +4,7 @@
 
 [build.environment]
   NODE_VERSION = "22.23.4"
+  NPM_CONFIG_REGISTRY = "https://registry.npmjs.org/"
 
 [[headers]]
   for = "/members/*"
