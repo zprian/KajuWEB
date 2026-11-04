@@ -23,6 +23,11 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# Local security report exports
+dependabot-alerts.json
+npm-audit.json
+npm-audit-production.json
+
 # OS
 .DS_Store
 *.pem
