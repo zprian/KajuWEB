@@ -9,7 +9,7 @@ export interface Props {
   description?: string;
 }
 
-const { title, lang: langProp, description = 'Kajukenbo Catalunya - Arte Marcial de Hawaii' } = Astro.props;
+const { title, lang: langProp, description = 'Kajukenbo Catalunya - sistema de autodefensa, disciplina y adaptación.' } = Astro.props;
 const lang = langProp ?? getLangFromUrl(Astro.url);
 const t = useTranslations(lang);
 ---
@@ -25,11 +25,12 @@ const t = useTranslations(lang);
     <link rel="alternate" hreflang="es" href={Astro.site?.toString() ?? '/'} />
     <link rel="alternate" hreflang="en" href={`${Astro.site ?? ''}/en`} />
     <link rel="alternate" hreflang="ca" href={`${Astro.site ?? ''}/ca`} />
+    <meta name="theme-color" content="#0b0b0c" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
   </head>
-  <body class="bg-kaju-dark text-kaju-light min-h-screen flex flex-col">
+  <body class="min-h-screen bg-[#0b0b0c] font-sans text-kaju-light antialiased selection:bg-kaju-red selection:text-white">
     <Header lang={lang} />
     <main class="flex-1">
       <slot />

@@ -3,67 +3,170 @@ export const prerender = false;
 import MembersLayout from '../../../layouts/MembersLayout.astro';
 import { getLangFromUrl, useTranslations, canAccessBelt, BELT_ORDER } from '../../../i18n/utils';
 import { createSupabaseServerClient } from '../../../lib/supabase-server';
+import { createSupabaseAdminClient } from '../../../lib/supabase-admin';
 
 const lang = getLangFromUrl(Astro.url);
 const t = useTranslations(lang);
-
 const { belt: requestedBelt } = Astro.params;
 
-// Validate belt param
-if (!requestedBelt || !(requestedBelt in BELT_ORDER)) {
-  return Astro.redirect('/members');
-}
+if (!requestedBelt || !(requestedBelt in BELT_ORDER)) return Astro.redirect('/members');
 
-const supabase = createSupabaseServerClient(Astro.cookies);
+const supabase = createSupabaseServerClient(Astro.cookies, Astro.request);
 const { data: { user } } = await supabase.auth.getUser();
-
-const { data: profile } = await supabase
-  .from('profiles')
-  .select('*')
-  .eq('id', user!.id)
-  .single();
-
+const { data: profile } = await supabase.from('profiles').select('*').eq('id', user!.id).single();
 const userBelt = profile?.belt ?? 'white';
 
-// Check access
-if (!canAccessBelt(userBelt, requestedBelt)) {
-  return Astro.redirect('/members?error=forbidden');
-}
+if (!canAccessBelt(userBelt, requestedBelt)) return Astro.redirect('/members?error=forbidden');
 
 const userName = profile ? `${profile.name} ${profile.surname}` : '';
 const beltLabel = t.members.beltLabel[requestedBelt as keyof typeof t.members.beltLabel] ?? requestedBelt;
+const categoryConfig = lang === 'en'
+  ? [
+      { key: 'kicks', label: 'Kicks', count: '2 techniques' }, { key: 'punches', label: 'Punches', count: '2 techniques' }, { key: 'knife', label: 'Knife', count: '2 techniques' },
+      { key: 'stick', label: 'Stick', count: '2 techniques' }, { key: 'grappling', label: 'Grappling', count: '2 techniques' }, { key: 'combinations', label: 'Combinations', count: '2 sets' },
+    ]
+  : lang === 'ca'
+    ? [
+        { key: 'kicks', label: 'Cops', count: '2 tècniques' }, { key: 'punches', label: 'Punys', count: '2 tècniques' }, { key: 'knife', label: 'Ganivet', count: '2 tècniques' },
+        { key: 'stick', label: 'Palo', count: '2 tècniques' }, { key: 'grappling', label: 'Agafades', count: '2 tècniques' }, { key: 'combinations', label: 'Combinacions', count: '2 sèries' },
+      ]
+    : [
+        { key: 'kicks', label: 'Patadas', count: '2 técnicas' }, { key: 'punches', label: 'Puños', count: '2 técnicas' }, { key: 'knife', label: 'Cuchillo', count: '2 técnicas' },
+        { key: 'stick', label: 'Palo', count: '2 técnicas' }, { key: 'grappling', label: 'Agarres', count: '2 técnicas' }, { key: 'combinations', label: 'Combinaciones', count: '2 series' },
+      ];
+const lessonCopy = lang === 'en' ? 'Video lesson pending.' : lang === 'ca' ? 'Lliçó en vídeo pendent.' : 'Lección en vídeo pendiente.';
+const videoCopy = lang === 'en' ? 'Watch lesson' : lang === 'ca' ? 'Veure lliçó' : 'Ver lección';
+const descriptionFallback = lang === 'en' ? 'Technique lesson.' : lang === 'ca' ? 'Lliçó de tècnica.' : 'Lección de técnica.';
+const closeCopy = lang === 'en' ? 'Close video' : lang === 'ca' ? 'Tancar vídeo' : 'Cerrar vídeo';
+const isEntryLevel = requestedBelt === 'white';
+const entryLevelCopy = lang === 'en'
+  ? 'White belt is the entry level. The technical curriculum begins with yellow belt.'
+  : lang === 'ca'
+    ? 'El cinturó blanc és el nivell d’entrada. El programa tècnic comença amb el cinturó groc.'
+    : 'El cinturón blanco es el nivel de entrada. El programa técnico comienza con el cinturón amarillo.';
+
+let contentQuery = supabase;
+try { contentQuery = createSupabaseAdminClient(); } catch { /* the authenticated RLS query remains as a fallback */ }
+
+const { data: techniques } = await contentQuery
+  .from('techniques')
+  .select('id, belt, category, slot, title_es, title_en, title_ca, description_es, description_en, description_ca, published')
+  .eq('belt', requestedBelt)
+  .eq('published', true)
+  .order('category')
+  .order('slot');
+
+const techniqueIds = (techniques ?? []).map((technique) => technique.id);
+const { data: videos } = techniqueIds.length
+  ? await contentQuery.from('training_videos').select('id, technique_id, storage_bucket, storage_path, duration_seconds, published').in('technique_id', techniqueIds).eq('published', true)
+  : { data: [] };
+
+const signedVideoUrls = new Map<string, string>();
+try {
+  const admin = createSupabaseAdminClient();
+  for (const video of videos ?? []) {
+    const { data } = await admin.storage.from(video.storage_bucket).createSignedUrl(video.storage_path, 60 * 60);
+    if (data?.signedUrl) signedVideoUrls.set(video.technique_id, data.signedUrl);
+  }
+} catch {
+  // The lesson remains visible, but the player is omitted until server storage credentials exist.
+}
+
+const categoryCards = categoryConfig
+  .map((category, index) => {
+    const lessons = [1, 2]
+      .map((slot) => {
+        const lesson = (techniques ?? []).find((item) => item.category === category.key && item.slot === slot);
+        if (!lesson) return null;
+        const video = (videos ?? []).find((item) => item.technique_id === lesson.id);
+        return { slot, lesson, videoUrl: video ? signedVideoUrls.get(lesson.id) ?? null : null };
+      })
+      .filter((lesson): lesson is NonNullable<typeof lesson> => Boolean(lesson));
+    const countLabel = category.key === 'combinations'
+      ? (lang === 'en' ? `${lessons.length} ${lessons.length === 1 ? 'set' : 'sets'}` : lang === 'ca' ? `${lessons.length} ${lessons.length === 1 ? 'sèrie' : 'sèries'}` : `${lessons.length} ${lessons.length === 1 ? 'serie' : 'series'}`)
+      : (lang === 'en' ? `${lessons.length} ${lessons.length === 1 ? 'technique' : 'techniques'}` : lang === 'ca' ? `${lessons.length} ${lessons.length === 1 ? 'tècnica' : 'tècniques'}` : `${lessons.length} ${lessons.length === 1 ? 'técnica' : 'técnicas'}`);
+    return { ...category, number: String(index + 1).padStart(2, '0'), count: countLabel, lessons };
+  })
+  .filter((category) => category.lessons.length > 0);
+const publishedLessonCount = categoryCards.reduce((total, category) => total + category.lessons.length, 0);
 ---
 
-<MembersLayout title={`${beltLabel} - ${t.members.content}`} lang={lang} userName={userName} belt={userBelt}>
-  <div class="space-y-6">
-    <div class="flex items-center gap-3">
-      <div class="w-8 h-2.5 rounded-full" style={`background: var(--belt-${requestedBelt})`}></div>
-      <h1 class="text-2xl font-bold text-white capitalize">{beltLabel}</h1>
+<MembersLayout title={`${beltLabel} - ${t.members.content}`} lang={lang} userName={userName} belt={userBelt} role={profile?.role} isAdmin={profile?.role === 'admin' || profile?.role === 'instructor'}>
+  <div class="space-y-8">
+    <div class="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+      <div><p class="text-[0.68rem] font-bold uppercase tracking-[0.28em] text-kaju-red">{t.members.content}</p><div class="mt-4 flex items-center gap-3"><div class="h-2.5 w-10 rounded-full" style={`background: var(--belt-${requestedBelt})`}></div><h1 class="font-heading text-5xl uppercase leading-none text-white">{beltLabel}</h1></div></div>
+      <span class="text-xs text-white/35">{isEntryLevel ? (lang === 'en' ? 'Entry level' : lang === 'ca' ? 'Nivell d’entrada' : 'Nivel de entrada') : `${publishedLessonCount} ${lang === 'en' ? (publishedLessonCount === 1 ? 'lesson' : 'lessons') : lang === 'ca' ? (publishedLessonCount === 1 ? 'lliçó' : 'lliçons') : (publishedLessonCount === 1 ? 'lección' : 'lecciones')}`}</span>
     </div>
-
-    <div class="bg-kaju-gray rounded-2xl p-8 text-center">
-      <div class="w-16 h-16 mx-auto mb-4 bg-kaju-red/10 rounded-2xl flex items-center justify-center">
-        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-        </svg>
+    {isEntryLevel ? (
+      <div class="rounded-2xl border border-white/10 bg-[#151517] p-8">
+        <p class="max-w-2xl text-base leading-7 text-white/60">{entryLevelCopy}</p>
       </div>
-      <p class="text-gray-300 text-lg mb-2">
-        Contenido del cinturón <strong class="text-white capitalize">{beltLabel}</strong>
-      </p>
-      <p class="text-gray-500 text-sm max-w-md mx-auto">
-        Este es el área de contenido para el cinturón {beltLabel}. El administrador puede añadir técnicas, vídeos, documentos y materiales de entrenamiento desde el panel de TinaCMS.
-      </p>
-    </div>
-
-    <!-- Content will be loaded from TinaCMS -->
-    <!-- Placeholder: each belt's .md file in content/members/ will be rendered here -->
+    ) : <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {categoryCards.map((category) => (
+        <article class="rounded-2xl border border-white/10 bg-[#151517] p-5">
+          <div class="flex items-center justify-between"><span class="font-heading text-3xl text-kaju-red">{category.number}</span><span class="text-[0.65rem] font-bold uppercase tracking-[0.14em] text-white/30">{category.count}</span></div>
+          <h2 class="mt-10 font-heading text-2xl uppercase text-white">{category.label}</h2>
+          <div class="mt-5 space-y-3">
+            {category.lessons.map(({ slot, lesson, videoUrl }) => lesson ? (
+              <div class="overflow-hidden rounded-xl border border-kaju-red/30 bg-kaju-red/10">
+                <div class="px-3 py-3"><div class="flex items-start gap-3"><span class="font-heading text-xl text-kaju-red">0{slot}</span><div><h3 class="text-sm font-semibold text-white">{lesson[`title_${lang}`] ?? lesson.title_es}</h3><p class="mt-1 text-xs leading-5 text-white/50">{lesson[`description_${lang}`] ?? lesson.description_es ?? descriptionFallback}</p></div></div></div>
+                {videoUrl ? <div class="border-t border-white/10 bg-black/20 p-2"><p class="mb-2 px-1 text-[0.6rem] font-bold uppercase tracking-[0.12em] text-kaju-red">{videoCopy}</p><div data-video-launch><button type="button" data-video-trigger class="group relative block w-full overflow-hidden rounded-lg text-left" aria-label={videoCopy}><video muted preload="metadata" playsinline class="aspect-video w-full bg-black object-cover" src={videoUrl}></video><span class="absolute inset-0 grid place-items-center bg-black/20 transition group-hover:bg-black/35"><span class="grid h-14 w-14 place-items-center rounded-full bg-kaju-red text-2xl text-white shadow-lg transition group-hover:scale-105">▶</span></span></button><dialog data-video-dialog class="video-dialog"><div class="video-dialog-shell"><form method="dialog" class="flex justify-end"><button type="submit" class="mb-2 grid h-9 w-9 place-items-center rounded-full bg-white/10 text-xl text-white transition hover:bg-white/20" aria-label={closeCopy}>×</button></form><video data-video-player controls playsinline preload="metadata" class="w-full rounded-xl bg-black" src={videoUrl}></video></div></dialog></div></div> : <p class="border-t border-white/10 px-3 py-3 text-xs text-white/40">{lessonCopy}</p>}
+              </div>
+            ) : (
+              <div class="rounded-xl border border-white/10 bg-white/[.03] px-3 py-3 text-xs text-white/40">0{slot} · {lessonCopy}</div>
+            ))}
+          </div>
+        </article>
+      ))}
+    </div>}
   </div>
 </MembersLayout>
 
+<script>
+  document.querySelectorAll('[data-video-launch]').forEach((root) => {
+    const trigger = root.querySelector('[data-video-trigger]');
+    const dialog = root.querySelector('[data-video-dialog]');
+    const player = root.querySelector('[data-video-player]');
+
+    if (!(trigger instanceof HTMLElement) || !(dialog instanceof HTMLDialogElement) || !(player instanceof HTMLVideoElement)) return;
+
+    trigger.addEventListener('click', () => {
+      dialog.showModal();
+      player.play().catch(() => {});
+    });
+
+    dialog.addEventListener('click', (event) => {
+      if (event.target === dialog) dialog.close();
+    });
+
+    dialog.addEventListener('close', () => {
+      player.pause();
+      player.currentTime = 0;
+    });
+  });
+</script>
+
 <style>
   :root {
-    --belt-white: #ffffff; --belt-yellow: #f5c518; --belt-orange: #f97316;
+    --belt-white: #f8f8f5; --belt-yellow: #f2c94c; --belt-orange: #f97316;
     --belt-purple: #a855f7; --belt-blue: #3b82f6; --belt-green: #22c55e;
-    --belt-brown: #92400e; --belt-black: #555;
+    --belt-brown: #8b5a2b; --belt-black: #343438;
   }
+
+  dialog.video-dialog {
+    width: min(92vw, 1100px);
+    max-width: none;
+    padding: 0;
+    border: 0;
+    border-radius: 1.5rem;
+    background: #111113;
+    color: white;
+  }
+
+  dialog.video-dialog::backdrop {
+    background: rgb(0 0 0 / 80%);
+    backdrop-filter: blur(8px);
+  }
+
+  .video-dialog-shell { padding: 1rem; }
 </style>

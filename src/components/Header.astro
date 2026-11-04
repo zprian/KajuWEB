@@ -9,22 +9,27 @@ export interface Props {
 const { lang } = Astro.props;
 const t = useTranslations(lang);
 
+const navLabels = {
+  es: { history: 'Historia', method: 'Método', classes: 'Clases', news: 'Actualidad' },
+  en: { history: 'History', method: 'Method', classes: 'Classes', news: 'Current' },
+  ca: { history: 'Història', method: 'Mètode', classes: 'Classes', news: 'Actualitat' },
+}[lang];
+
 const navItems = [
-  { href: '#historia', label: t.nav.historia },
-  { href: '#angel', label: t.nav.angel },
-  { href: '#catalunya', label: t.nav.catalunya },
-  { href: '#horario', label: t.nav.horario },
-  { href: '#noticias', label: t.nav.noticias },
+  { href: `${getLocalePath(lang)}#historia`, label: navLabels.history },
+  { href: `${getLocalePath(lang)}#metodo`, label: navLabels.method },
+  { href: `${getLocalePath(lang)}#clases`, label: navLabels.classes },
+  { href: `${getLocalePath(lang)}#noticias`, label: navLabels.news },
 ];
 ---
 
-<header class="sticky top-0 z-50 bg-kaju-dark/95 backdrop-blur border-b border-kaju-gray">
+<header class="sticky top-0 z-50 border-b border-white/10 bg-[#0b0b0c]/90 backdrop-blur-xl">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <div class="flex items-center justify-between h-16">
       <!-- Logo -->
-      <a href={getLocalePath(lang)} class="flex items-center gap-3">
-        <img src="/images/logo.png" alt="Kajukenbo Catalunya" class="h-10 w-auto" onerror="this.style.display='none'" />
-        <span class="text-white font-heading font-bold text-xl tracking-wide">Kajukenbo</span>
+      <a href={getLocalePath(lang)} class="group flex items-center gap-3">
+        <span class="flex h-9 w-9 items-center justify-center rounded-full border border-kaju-red/70 text-xs font-black text-kaju-red transition group-hover:bg-kaju-red group-hover:text-white">K</span>
+        <span class="font-heading text-xl font-semibold uppercase tracking-[0.06em] text-white">Kajukenbo <span class="text-kaju-red">CAT</span></span>
       </a>
 
       <!-- Desktop Nav -->
@@ -32,7 +37,7 @@ const navItems = [
         {navItems.map(item => (
           <a
             href={item.href}
-            class="px-3 py-2 text-sm text-gray-300 hover:text-white transition rounded-lg hover:bg-kaju-gray"
+            class="rounded-lg px-3 py-2 text-[0.68rem] font-bold uppercase tracking-[0.16em] text-white/[.55] transition hover:bg-white/5 hover:text-white"
           >
             {item.label}
           </a>
@@ -44,7 +49,7 @@ const navItems = [
         <LanguageSelector lang={lang} />
         <a
           href={getLocalePath(lang, 'members')}
-          class="hidden sm:inline-flex items-center px-4 py-1.5 rounded-lg bg-kaju-red text-white text-sm font-medium hover:bg-red-700 transition"
+          class="hidden items-center rounded-full bg-kaju-red px-4 py-2 text-[0.68rem] font-bold uppercase tracking-[0.14em] text-white transition hover:bg-red-700 sm:inline-flex"
         >
           {t.nav.miembros}
         </a>
@@ -52,7 +57,7 @@ const navItems = [
         <!-- Mobile menu button -->
         <button
           id="menu-btn"
-          class="lg:hidden p-2 rounded-lg text-gray-400 hover:text-white hover:bg-kaju-gray transition"
+          class="rounded-lg p-2 text-white/50 transition hover:bg-white/5 hover:text-white lg:hidden"
           aria-label="Open menu"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -63,18 +68,18 @@ const navItems = [
     </div>
 
     <!-- Mobile Nav -->
-    <nav id="mobile-menu" class="hidden lg:hidden pb-3 border-t border-kaju-gray mt-2 pt-3">
+    <nav id="mobile-menu" class="mt-2 hidden border-t border-white/10 pb-3 pt-3 lg:hidden">
       {navItems.map(item => (
         <a
           href={item.href}
-          class="block px-3 py-2 text-sm text-gray-300 hover:text-white transition rounded-lg"
+          class="block rounded-lg px-3 py-2 text-sm text-white/60 transition hover:bg-white/5 hover:text-white"
         >
           {item.label}
         </a>
       ))}
       <a
         href={getLocalePath(lang, 'members')}
-        class="block mt-2 px-3 py-2 text-sm text-kaju-red font-medium"
+        class="mt-2 block px-3 py-2 text-sm font-bold uppercase tracking-[0.14em] text-kaju-red"
       >
         {t.nav.miembros}
       </a>

@@ -12,8 +12,8 @@ export default {
         },
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        heading: ['Georgia', 'serif'],
+        sans: ['DM Sans', 'system-ui', 'sans-serif'],
+        heading: ['Barlow Condensed', 'Impact', 'sans-serif'],
       },
     },
   },

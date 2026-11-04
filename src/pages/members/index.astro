@@ -7,7 +7,7 @@ import { createSupabaseServerClient } from '../../lib/supabase-server';
 const lang = getLangFromUrl(Astro.url);
 const t = useTranslations(lang);
 
-const supabase = createSupabaseServerClient(Astro.cookies);
+const supabase = createSupabaseServerClient(Astro.cookies, Astro.request);
 const { data: { user } } = await supabase.auth.getUser();
 
 // Fetch profile
@@ -24,7 +24,7 @@ const userName = profile ? `${profile.name} ${profile.surname}` : user!.email ??
 const accessibleBelts = BELTS.filter(b => canAccessBelt(userBelt, b));
 ---
 
-<MembersLayout title={t.members.dashboard} lang={lang} userName={userName} belt={userBelt}>
+<MembersLayout title={t.members.dashboard} lang={lang} userName={userName} belt={userBelt} role={profile?.role} isAdmin={profile?.role === 'admin' || profile?.role === 'instructor'}>
   <div class="space-y-8">
     <div>
       <h1 class="text-2xl font-bold text-white mb-1">{t.members.dashboard}</h1>

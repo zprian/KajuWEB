@@ -1,0 +1,43 @@
+---
+export const prerender = false;
+import MembersLayout from '../../layouts/MembersLayout.astro';
+import { getLangFromUrl, useTranslations, BELTS, canAccessBelt } from '../../i18n/utils';
+import { createSupabaseServerClient } from '../../lib/supabase-server';
+import { createSupabaseAdminClient } from '../../lib/supabase-admin';
+
+const lang = getLangFromUrl(Astro.url);
+const t = useTranslations(lang);
+const supabase = createSupabaseServerClient(Astro.cookies, Astro.request);
+const { data: { user } } = await supabase.auth.getUser();
+const { data: profile } = await supabase.from('profiles').select('*').eq('id', user!.id).single();
+const userBelt = profile?.belt ?? 'white';
+const userName = profile ? `${profile.name} ${profile.surname}`.trim() : user!.email ?? '';
+const accessibleBelts = BELTS.filter((belt) => canAccessBelt(userBelt, belt));
+let trainingQuery = supabase;
+try { trainingQuery = createSupabaseAdminClient(); } catch { /* RLS query remains as fallback */ }
+const categories = lang === 'en'
+  ? [{ key: 'kicks', label: 'Kicks' }, { key: 'punches', label: 'Punches' }, { key: 'knife', label: 'Knife' }, { key: 'stick', label: 'Stick' }, { key: 'grappling', label: 'Grappling' }, { key: 'combinations', label: 'Combinations' }]
+  : lang === 'ca'
+    ? [{ key: 'kicks', label: 'Cops' }, { key: 'punches', label: 'Punys' }, { key: 'knife', label: 'Ganivet' }, { key: 'stick', label: 'Palo' }, { key: 'grappling', label: 'Agafades' }, { key: 'combinations', label: 'Combinacions' }]
+    : [{ key: 'kicks', label: 'Patadas' }, { key: 'punches', label: 'Puños' }, { key: 'knife', label: 'Cuchillo' }, { key: 'stick', label: 'Palo' }, { key: 'grappling', label: 'Agarres' }, { key: 'combinations', label: 'Combinaciones' }];
+const labels = lang === 'en' ? { kicker: 'Training library', title: 'Train the next step.', text: 'Each grade shows only the published lessons available to you. The next grade is visible so you can prepare with intention.', available: 'Available grades', lessons: 'Lessons', empty: 'No published lessons yet.' } : lang === 'ca' ? { kicker: 'Biblioteca d’entrenament', title: 'Entrena el següent pas.', text: 'Cada grau mostra només les lliçons publicades que tens disponibles. El següent grau és visible perquè puguis preparar-te amb intenció.', available: 'Graus disponibles', lessons: 'Lliçons', empty: 'Encara no hi ha lliçons publicades.' } : { kicker: 'Biblioteca de entrenamiento', title: 'Entrena el siguiente paso.', text: 'Cada grado muestra solo las lecciones publicadas que tienes disponibles. El siguiente grado queda visible para que puedas prepararte con intención.', available: 'Grados disponibles', lessons: 'Lecciones', empty: 'Todavía no hay lecciones publicadas.' };
+const entryLevelCard = lang === 'en' ? 'Entry level · no techniques' : lang === 'ca' ? 'Nivell d’entrada · sense tècniques' : 'Nivel de entrada · sin técnicas';
+
+const { data: publishedTechniques } = await trainingQuery.from('techniques').select('belt, category').in('belt', accessibleBelts).eq('published', true);
+const countFor = (belt: string, category?: string) => (publishedTechniques ?? []).filter((technique) => technique.belt === belt && (!category || technique.category === category)).length;
+const countLabel = (count: number, category: string) => category === 'combinations'
+  ? (lang === 'en' ? `${count} ${count === 1 ? 'set' : 'sets'}` : lang === 'ca' ? `${count} ${count === 1 ? 'sèrie' : 'sèries'}` : `${count} ${count === 1 ? 'serie' : 'series'}`)
+  : (lang === 'en' ? `${count} ${count === 1 ? 'technique' : 'techniques'}` : lang === 'ca' ? `${count} ${count === 1 ? 'tècnica' : 'tècniques'}` : `${count} ${count === 1 ? 'técnica' : 'técnicas'}`);
+---
+
+<MembersLayout title={labels.kicker} lang={lang} userName={userName} belt={userBelt} role={profile?.role} isAdmin={profile?.role === 'admin' || profile?.role === 'instructor'}>
+  <div class="space-y-10">
+    <div><p class="text-[0.68rem] font-bold uppercase tracking-[0.28em] text-kaju-red">{labels.kicker}</p><h1 class="mt-4 max-w-2xl font-heading text-5xl uppercase leading-none tracking-[-.03em] text-white sm:text-7xl">{labels.title}</h1><p class="mt-5 max-w-2xl text-base leading-7 text-white/50">{labels.text}</p></div>
+    <section><div class="mb-4 flex items-center justify-between"><h2 class="text-[0.68rem] font-bold uppercase tracking-[0.22em] text-white/45">{labels.available}</h2><span class="text-xs text-white/30">{accessibleBelts.length} / {BELTS.length}</span></div><div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{accessibleBelts.map((belt) => { const total = countFor(belt); return <a href={`/members/content/${belt}`} class="group rounded-2xl border border-white/10 bg-[#151517] p-5 transition hover:border-kaju-red/50 hover:bg-[#1b1b1e]"><div class="mb-8 flex items-center justify-between"><span class="h-2 w-12 rounded-full" style={`background: var(--belt-${belt})`}></span><span class="text-xs text-white/25">→</span></div><h3 class="font-heading text-3xl uppercase text-white">{t.members.beltLabel[belt as keyof typeof t.members.beltLabel]}</h3><p class="mt-2 text-xs text-white/40">{belt === 'white' ? entryLevelCard : total ? `${total} ${lang === 'en' ? (total === 1 ? 'lesson' : 'lessons') : lang === 'ca' ? (total === 1 ? 'lliçó' : 'lliçons') : (total === 1 ? 'lección' : 'lecciones')}` : labels.empty}</p></a>; })}</div></section>
+    {userBelt === 'white' ? <section class="rounded-2xl border border-white/10 bg-[#111113] p-6"><p class="text-sm text-white/55">{entryLevelCard}</p></section> : <section><div class="mb-4 flex items-center justify-between"><h2 class="text-[0.68rem] font-bold uppercase tracking-[0.22em] text-white/45">{labels.lessons}</h2><span class="text-xs text-white/30">{countFor(userBelt)} / {lang === 'en' ? 'published' : lang === 'ca' ? 'publicades' : 'publicadas'}</span></div><div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{categories.map((category, index) => { const count = countFor(userBelt, category.key); return count > 0 ? <article class="rounded-2xl border border-white/10 bg-[#111113] p-5"><div class="flex items-center justify-between"><span class="font-heading text-3xl text-kaju-red">0{index + 1}</span><span class="text-[0.65rem] font-bold uppercase tracking-[0.14em] text-white/30">{countLabel(count, category.key)}</span></div><h3 class="mt-10 font-heading text-2xl uppercase text-white">{category.label}</h3><a href={`/members/content/${userBelt}`} class="mt-4 inline-flex text-xs font-bold uppercase tracking-[0.12em] text-kaju-red">{lang === 'en' ? 'Open lessons' : lang === 'ca' ? 'Obrir lliçons' : 'Abrir lecciones'} →</a></article> : null; })}</div></section>}
+  </div>
+</MembersLayout>
+
+<style>
+  :root { --belt-white: #f8f8f5; --belt-yellow: #f2c94c; --belt-orange: #f97316; --belt-purple: #a855f7; --belt-blue: #3b82f6; --belt-green: #22c55e; --belt-brown: #8b5a2b; --belt-black: #343438; }
+</style>

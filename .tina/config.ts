@@ -65,7 +65,7 @@ export default defineConfig({
         path: 'content/schedule',
         format: 'md',
         fields: [
-          { name: 'title', label: 'Título', type: 'string', isTitle: true },
+          { name: 'title', label: 'Título', type: 'string', required: true, isTitle: true },
           {
             name: 'entries',
             label: 'Clases',

@@ -1,114 +1,112 @@
 ---
 export const prerender = false;
 import MembersLayout from '../../layouts/MembersLayout.astro';
-import { getLangFromUrl, useTranslations } from '../../i18n/utils';
+import { getLangFromUrl, useTranslations, BELTS } from '../../i18n/utils';
 import { createSupabaseServerClient } from '../../lib/supabase-server';
 
 const lang = getLangFromUrl(Astro.url);
 const t = useTranslations(lang);
-
-const supabase = createSupabaseServerClient(Astro.cookies);
+const supabase = createSupabaseServerClient(Astro.cookies, Astro.request);
 const { data: { user } } = await supabase.auth.getUser();
 
-let saved = false;
-let saveError = '';
+const copy = lang === 'en'
+  ? { passport: 'Kajukenbo passport', passportText: 'Your belt journey and the date recorded for each grade.', unknownDate: '1 January 1970', current: 'Current grade', personal: 'Personal information', password: 'Change password', newPassword: 'New password', confirmPassword: 'Confirm password', save: 'Save changes', savePassword: 'Update password', emailNote: 'Changing your email may require confirmation from the new address.', passwordMismatch: 'The passwords do not match.', saved: 'Profile updated.', passwordSaved: 'Password updated.', license: 'License status', noLicense: 'No license renewal recorded yet.', renewed: 'Renewed', expires: 'Expires', active: 'Active', beltManaged: 'Your belt and exam dates are managed by a master or administrator.' }
+  : lang === 'ca'
+    ? { passport: 'Passaport Kajukenbo', passportText: 'El teu recorregut de cinturons i la data registrada per a cada grau.', unknownDate: '1 de gener de 1970', current: 'Grau actual', personal: 'Informació personal', password: 'Canviar contrasenya', newPassword: 'Nova contrasenya', confirmPassword: 'Confirma la contrasenya', save: 'Desar canvis', savePassword: 'Actualitzar contrasenya', emailNote: 'Canviar el correu pot requerir una confirmació des de la nova adreça.', passwordMismatch: 'Les contrasenyes no coincideixen.', saved: 'Perfil actualitzat.', passwordSaved: 'Contrasenya actualitzada.', license: 'Estat de la llicència', noLicense: 'Encara no hi ha cap renovació registrada.', renewed: 'Renovada', expires: 'Caduca', active: 'Activa', beltManaged: 'El teu cinturó i les dates dels exàmens les gestiona un mestre o administrador.' }
+    : { passport: 'Pasaporte Kajukenbo', passportText: 'Tu recorrido de cinturones y la fecha registrada para cada grado.', unknownDate: '1 de enero de 1970', current: 'Grado actual', personal: 'Información personal', password: 'Cambiar contraseña', newPassword: 'Nueva contraseña', confirmPassword: 'Confirma la contraseña', save: 'Guardar cambios', savePassword: 'Actualizar contraseña', emailNote: 'Cambiar el email puede requerir confirmación desde la nueva dirección.', passwordMismatch: 'Las contraseñas no coinciden.', saved: 'Perfil actualizado.', passwordSaved: 'Contraseña actualizada.', license: 'Estado de la licencia', noLicense: 'Todavía no hay ninguna renovación registrada.', renewed: 'Renovada', expires: 'Caduca', active: 'Activa', beltManaged: 'Tu cinturón y las fechas de examen las gestiona un maestro o administrador.' };
 
+const { data: profile } = await supabase.from('profiles').select('*').eq('id', user!.id).single();
+const { data: exams } = await supabase.from('exam_records').select('*').eq('profile_id', user!.id).order('exam_date', { ascending: false });
+const { data: licenses } = await supabase.from('license_renewals').select('*').eq('profile_id', user!.id).order('renewed_on', { ascending: false });
+
+let saved = false;
+let passwordSaved = false;
+let saveError = '';
 if (Astro.request.method === 'POST') {
   const formData = await Astro.request.formData();
-  const name = formData.get('name')?.toString() ?? '';
-  const surname = formData.get('surname')?.toString() ?? '';
-  const phone = formData.get('phone')?.toString() ?? '';
+  const action = formData.get('action')?.toString() ?? 'profile';
 
-  const { error } = await supabase
-    .from('profiles')
-    .update({ name, surname, phone })
-    .eq('id', user!.id);
-
-  if (error) saveError = error.message;
-  else saved = true;
+  if (action === 'password') {
+    const password = formData.get('password')?.toString() ?? '';
+    const confirmation = formData.get('password_confirmation')?.toString() ?? '';
+    if (password.length < 6) saveError = 'La contraseña debe tener al menos 6 caracteres.';
+    else if (password !== confirmation) saveError = copy.passwordMismatch;
+    else {
+      const { error } = await supabase.auth.updateUser({ password });
+      if (error) saveError = error.message;
+      else passwordSaved = true;
+    }
+  } else {
+    const name = formData.get('name')?.toString().trim() ?? '';
+    const surname = formData.get('surname')?.toString().trim() ?? '';
+    const phone = formData.get('phone')?.toString().trim() || null;
+    const email = formData.get('email')?.toString().trim().toLowerCase() ?? user!.email ?? '';
+    const { error: profileError } = await supabase.from('profiles').update({ name, surname, phone }).eq('id', user!.id);
+    if (profileError) saveError = profileError.message;
+    else if (email && email !== user!.email) {
+      const { error: emailError } = await supabase.auth.updateUser({ email });
+      if (emailError) saveError = emailError.message;
+      else saved = true;
+    } else saved = true;
+  }
 }
 
-const { data: profile } = await supabase
-  .from('profiles')
-  .select('*')
-  .eq('id', user!.id)
-  .single();
+const userName = profile ? `${profile.name} ${profile.surname}`.trim() : user!.email ?? '';
+const latestExamByBelt = new Map<string, string>();
+for (const exam of exams ?? []) if (!latestExamByBelt.has(exam.belt)) latestExamByBelt.set(exam.belt, exam.exam_date);
+const latestLicense = licenses?.[0] ?? null;
+const currentBeltIndex = Math.max(0, BELTS.indexOf(profile?.belt ?? 'white'));
+const attainedBelts = BELTS.slice(0, currentBeltIndex + 1);
 
-const userName = profile ? `${profile.name} ${profile.surname}` : '';
+function displayDate(value: string | null | undefined) {
+  if (!value) return copy.unknownDate;
+  const date = new Date(`${value}T00:00:00`);
+  return date.toLocaleDateString(lang === 'en' ? 'en-GB' : 'es-ES');
+}
+
+function beltLabel(belt: string) {
+  return t.members.beltLabel[belt as keyof typeof t.members.beltLabel] ?? belt;
+}
 ---
 
-<MembersLayout title={t.members.profile} lang={lang} userName={userName} belt={profile?.belt}>
-  <div class="space-y-6">
-    <h1 class="text-2xl font-bold text-white">{t.members.profile}</h1>
+<MembersLayout title={t.members.profile} lang={lang} userName={userName} belt={profile?.belt} role={profile?.role} isAdmin={profile?.role === 'admin' || profile?.role === 'instructor'}>
+  <div class="space-y-10">
+    <div><p class="text-[0.68rem] font-bold uppercase tracking-[0.28em] text-kaju-red">{t.members.profile}</p><h1 class="mt-4 font-heading text-5xl uppercase leading-none text-white sm:text-7xl">{userName}</h1></div>
 
-    {saved && (
-      <div class="px-4 py-3 bg-green-500/20 border border-green-500/40 rounded-xl text-green-400 text-sm">
-        {t.members.saved}
-      </div>
-    )}
-    {saveError && (
-      <div class="px-4 py-3 bg-red-500/20 border border-red-500/40 rounded-xl text-red-400 text-sm">
-        {saveError}
-      </div>
-    )}
+    {saved && <div class="rounded-2xl border border-green-500/40 bg-green-500/10 px-5 py-4 text-sm text-green-300">{copy.saved}</div>}
+    {passwordSaved && <div class="rounded-2xl border border-green-500/40 bg-green-500/10 px-5 py-4 text-sm text-green-300">{copy.passwordSaved}</div>}
+    {saveError && <div class="rounded-2xl border border-red-500/40 bg-red-500/10 px-5 py-4 text-sm text-red-300">{saveError}</div>}
 
-    <form method="POST" class="bg-kaju-gray rounded-2xl p-6 space-y-5">
-      <div class="grid sm:grid-cols-2 gap-5">
-        <div>
-          <label class="block text-sm font-medium text-gray-300 mb-1.5">{t.members.name}</label>
-          <input
-            name="name"
-            type="text"
-            value={profile?.name ?? ''}
-            required
-            class="w-full px-4 py-3 bg-kaju-dark border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-white/50 transition"
-          />
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-300 mb-1.5">{t.members.surname}</label>
-          <input
-            name="surname"
-            type="text"
-            value={profile?.surname ?? ''}
-            required
-            class="w-full px-4 py-3 bg-kaju-dark border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-white/50 transition"
-          />
-        </div>
+    <section class="rounded-3xl border border-white/10 bg-[#151517] p-6 sm:p-8">
+      <div class="mb-8"><p class="text-[0.68rem] font-bold uppercase tracking-[0.22em] text-kaju-red">{copy.passport}</p><h2 class="mt-3 font-heading text-4xl uppercase text-white">{copy.passport}</h2><p class="mt-3 max-w-2xl text-sm leading-6 text-white/50">{copy.passportText}</p></div>
+      <div class="grid grid-cols-2 gap-x-3 gap-y-8 sm:grid-cols-4 lg:grid-cols-8">
+        {attainedBelts.map((belt, index) => {
+          const date = latestExamByBelt.get(belt);
+          const current = profile?.belt === belt;
+          return <article class={`passport-badge ${current ? 'is-current' : ''} ${date ? 'has-date' : ''}`}><div class="ribbon-mark" style={`--badge-color: var(--belt-${belt})`}><span class="ribbon-tail ribbon-tail-left"></span><span class="ribbon-tail ribbon-tail-right"></span><span class="badge-disc">{String(index + 1).padStart(2, '0')}</span></div><h3 class="mt-3 text-center text-xs font-bold uppercase tracking-[0.08em] text-white">{beltLabel(belt)}</h3><time class="mt-1 block text-center text-[0.68rem] text-white/45">{displayDate(date)}</time>{current && <span class="mt-2 block text-center text-[0.58rem] font-bold uppercase tracking-[0.12em] text-kaju-red">{copy.current}</span>}</article>;
+        })}
       </div>
-      <div>
-        <label class="block text-sm font-medium text-gray-300 mb-1.5">{t.members.email}</label>
-        <input
-          type="email"
-          value={user?.email ?? ''}
-          disabled
-          class="w-full px-4 py-3 bg-kaju-dark/50 border border-white/5 rounded-xl text-gray-500 cursor-not-allowed"
-        />
-      </div>
-      <div>
-        <label class="block text-sm font-medium text-gray-300 mb-1.5">{t.members.phone}</label>
-        <input
-          name="phone"
-          type="tel"
-          value={profile?.phone ?? ''}
-          class="w-full px-4 py-3 bg-kaju-dark border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-white/50 transition"
-        />
-      </div>
-      <div>
-        <label class="block text-sm font-medium text-gray-300 mb-1.5">{t.members.belt}</label>
-        <input
-          type="text"
-          value={t.members.beltLabel[profile?.belt as keyof typeof t.members.beltLabel] ?? profile?.belt ?? ''}
-          disabled
-          class="w-full px-4 py-3 bg-kaju-dark/50 border border-white/5 rounded-xl text-gray-500 cursor-not-allowed capitalize"
-        />
-        <p class="text-xs text-gray-500 mt-1">El cinturón solo puede ser modificado por un administrador.</p>
-      </div>
-      <button
-        type="submit"
-        class="px-6 py-3 bg-kaju-red hover:bg-red-700 text-white font-semibold rounded-xl transition"
-      >
-        {t.members.save}
-      </button>
-    </form>
+      <p class="mt-8 text-xs text-white/35">{copy.beltManaged}</p>
+    </section>
+
+    <div class="grid gap-6 xl:grid-cols-[1.2fr_.8fr]">
+      <section class="rounded-2xl border border-white/10 bg-[#151517] p-6 sm:p-8"><div class="mb-6"><p class="text-[0.68rem] font-bold uppercase tracking-[0.22em] text-white/45">{copy.personal}</p><h2 class="mt-3 font-heading text-3xl uppercase text-white">{copy.personal}</h2></div><form method="POST" class="space-y-5"><input type="hidden" name="action" value="profile" /><div class="grid gap-5 sm:grid-cols-2"><label class="text-sm text-white/60">{t.members.name}<input name="name" value={profile?.name ?? ''} required class="mt-2 w-full rounded-xl border border-white/10 bg-[#0f0f11] px-4 py-3 text-white outline-none focus:border-kaju-red" /></label><label class="text-sm text-white/60">{t.members.surname}<input name="surname" value={profile?.surname ?? ''} required class="mt-2 w-full rounded-xl border border-white/10 bg-[#0f0f11] px-4 py-3 text-white outline-none focus:border-kaju-red" /></label></div><label class="block text-sm text-white/60">{t.members.phone}<input name="phone" type="tel" value={profile?.phone ?? ''} class="mt-2 w-full rounded-xl border border-white/10 bg-[#0f0f11] px-4 py-3 text-white outline-none focus:border-kaju-red" /></label><label class="block text-sm text-white/60">{t.members.email}<input name="email" type="email" value={user?.email ?? ''} required class="mt-2 w-full rounded-xl border border-white/10 bg-[#0f0f11] px-4 py-3 text-white outline-none focus:border-kaju-red" /><span class="mt-2 block text-xs text-white/35">{copy.emailNote}</span></label><button type="submit" class="rounded-full bg-kaju-red px-5 py-3 text-sm font-bold text-white transition hover:bg-red-700">{copy.save}</button></form></section>
+
+      <div class="space-y-6"><section class="rounded-2xl border border-white/10 bg-[#151517] p-6"><div class="mb-5"><p class="text-[0.68rem] font-bold uppercase tracking-[0.22em] text-white/45">{copy.password}</p><h2 class="mt-3 font-heading text-3xl uppercase text-white">{copy.password}</h2></div><form method="POST" class="space-y-4"><input type="hidden" name="action" value="password" /><label class="block text-sm text-white/60">{copy.newPassword}<input name="password" type="password" minlength="6" required autocomplete="new-password" class="mt-2 w-full rounded-xl border border-white/10 bg-[#0f0f11] px-4 py-3 text-white outline-none focus:border-kaju-red" /></label><label class="block text-sm text-white/60">{copy.confirmPassword}<input name="password_confirmation" type="password" minlength="6" required autocomplete="new-password" class="mt-2 w-full rounded-xl border border-white/10 bg-[#0f0f11] px-4 py-3 text-white outline-none focus:border-kaju-red" /></label><button type="submit" class="rounded-full border border-kaju-red/50 px-5 py-3 text-sm font-bold text-kaju-red transition hover:bg-kaju-red hover:text-white">{copy.savePassword}</button></form></section><section class="rounded-2xl border border-white/10 bg-[#151517] p-6"><p class="text-[0.68rem] font-bold uppercase tracking-[0.22em] text-white/45">{copy.license}</p>{latestLicense ? <div class="mt-5 space-y-2 text-sm text-white/60"><p><span class="text-white/35">{copy.renewed}:</span> {displayDate(latestLicense.renewed_on)}</p>{latestLicense.expires_on && <p><span class="text-white/35">{copy.expires}:</span> {displayDate(latestLicense.expires_on)}</p>}<p class="text-green-300">{latestLicense.status === 'active' ? copy.active : latestLicense.status}</p></div> : <p class="mt-5 text-sm text-white/40">{copy.noLicense}</p>}</section></div>
+    </div>
   </div>
 </MembersLayout>
+
+<style>
+  :root { --belt-white: #f8f8f5; --belt-yellow: #f2c94c; --belt-orange: #f97316; --belt-purple: #a855f7; --belt-blue: #3b82f6; --belt-green: #22c55e; --belt-brown: #8b5a2b; --belt-black: #343438; }
+  .passport-badge { position: relative; min-width: 0; }
+  .passport-badge.is-current .ribbon-mark { filter: drop-shadow(0 0 1rem color-mix(in srgb, var(--badge-color) 50%, transparent)); transform: translateY(-.2rem); }
+  .passport-badge:not(.has-date) { opacity: .58; }
+  .ribbon-mark { position: relative; width: 4.4rem; height: 5.25rem; margin: 0 auto; background: var(--badge-color); clip-path: polygon(0 0, 100% 0, 100% 100%, 75% 88%, 50% 100%, 25% 88%, 0 100%); transition: transform .2s, filter .2s; }
+  .ribbon-mark::before { content: ''; position: absolute; inset: .28rem; border: 1px solid rgb(255 255 255 / 35%); clip-path: inherit; }
+  .ribbon-tail { position: absolute; bottom: -.3rem; z-index: -1; width: 1.2rem; height: 2.25rem; background: color-mix(in srgb, var(--badge-color) 72%, #111); }
+  .ribbon-tail-left { left: -.48rem; transform: rotate(12deg); }
+  .ribbon-tail-right { right: -.48rem; transform: rotate(-12deg); }
+  .badge-disc { position: absolute; top: 1rem; left: 50%; display: grid; width: 2.65rem; height: 2.65rem; transform: translateX(-50%); place-items: center; border: 3px solid rgb(255 255 255 / 75%); border-radius: 999px; background: #171719; color: white; font-family: var(--font-heading); font-size: .95rem; font-weight: 800; }
+  .passport-badge.is-current .badge-disc { border-color: white; box-shadow: 0 0 0 .2rem rgb(255 255 255 / 18%); }
+</style>

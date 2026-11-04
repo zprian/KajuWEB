@@ -1,76 +1,140 @@
 ---
 export const prerender = false;
 import Layout from '../layouts/Layout.astro';
-import { getLangFromUrl, useTranslations } from '../i18n/utils';
-import { createSupabaseServerClient } from '../lib/supabase-server';
+import { getLangFromUrl } from '../i18n/utils';
 
 const lang = getLangFromUrl(Astro.url);
-const t = useTranslations(lang);
-
-// Redirect if already logged in
-const supabase = createSupabaseServerClient(Astro.cookies);
-const { data: { user } } = await supabase.auth.getUser();
-if (user) return Astro.redirect('/members');
-
 const error = Astro.url.searchParams.get('error');
+const confirmed = Astro.url.searchParams.get('confirmed');
+const copy = lang === 'en'
+  ? { title: 'Member access', email: 'Email address', placeholder: 'name@example.com', send: 'Send access link', sent: 'Check your email. We sent you a one-use access link.', confirmed: 'Your invitation has been confirmed. Enter your email to receive an access link.', error: 'We could not complete the access link. It may have expired; ask an administrator to resend the invitation.', notFound: 'Only invited and confirmed members can access this area.' }
+  : lang === 'ca'
+    ? { title: 'Accés de membres', email: 'Correu electrònic', placeholder: 'nom@exemple.com', send: 'Enviar enllaç d’accés', sent: 'Revisa el teu correu. Hi hem enviat un enllaç d’accés d’un sol ús.', confirmed: 'La teva invitació s’ha confirmat. Introdueix el teu correu per rebre un enllaç d’accés.', error: 'No hem pogut completar l’enllaç d’accés. Pot haver caducat; demana a un administrador que reenviï la invitació.', notFound: 'Només poden accedir els membres convidats i confirmats.' }
+    : { title: 'Acceso para miembros', email: 'Correo electrónico', placeholder: 'nombre@ejemplo.com', send: 'Enviar enlace de acceso', sent: 'Revisa tu email. Hemos enviado un enlace de acceso de un solo uso.', confirmed: 'Tu invitación ha sido confirmada. Introduce tu email para recibir un enlace de acceso.', error: 'No se ha podido completar el enlace de acceso. Puede haber caducado; pide a un administrador que reenvíe la invitación.', notFound: 'Solo pueden acceder los miembros invitados y confirmados.' };
 ---
 
-<Layout title={t.auth.loginTitle} lang={lang}>
-  <div class="min-h-[80vh] flex items-center justify-center px-4">
+<Layout title={copy.title} lang={lang}>
+  <div class="min-h-[80vh] flex items-center justify-center px-4 py-10">
     <div class="w-full max-w-md">
-      <div class="bg-kaju-gray rounded-2xl p-8 shadow-2xl border border-white/10">
-        <div class="text-center mb-8">
-          <div class="w-16 h-16 mx-auto mb-4 bg-kaju-red/20 rounded-2xl flex items-center justify-center">
-            <svg class="w-8 h-8 text-kaju-red" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
-            </svg>
+      <div class="rounded-2xl border border-white/10 bg-kaju-gray p-8 shadow-2xl">
+        <div class="mb-8 text-center">
+          <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-kaju-red/20">
+            <svg class="h-8 w-8 text-kaju-red" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
           </div>
-          <h1 class="text-2xl font-bold text-white">{t.auth.loginTitle}</h1>
+          <h1 class="text-2xl font-bold text-white">{copy.title}</h1>
         </div>
 
-        {error && (
-          <div class="mb-6 px-4 py-3 bg-red-500/20 border border-red-500/40 rounded-xl text-red-400 text-sm">
-            {t.auth.loginError}
-          </div>
-        )}
+        {error && <div class="mb-6 rounded-xl border border-red-500/40 bg-red-500/20 px-4 py-3 text-sm text-red-300">{copy.error}</div>}
+        {confirmed === '1' && <div class="mb-6 rounded-xl border border-green-500/40 bg-green-500/10 px-4 py-3 text-sm text-green-300">{copy.confirmed}</div>}
+        <p id="auth-message" hidden class="mb-6 rounded-xl border border-kaju-red/40 bg-kaju-red/10 px-4 py-3 text-sm text-red-200"></p>
 
-        <form action="/api/auth/login" method="POST" class="space-y-5">
-          <div>
-            <label for="email" class="block text-sm font-medium text-gray-300 mb-1.5">
-              {t.auth.email}
-            </label>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              required
-              autocomplete="email"
-              class="w-full px-4 py-3 bg-kaju-dark border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 transition"
-              placeholder="ejemplo@correo.com"
-            />
-          </div>
-          <div>
-            <label for="password" class="block text-sm font-medium text-gray-300 mb-1.5">
-              {t.auth.password}
-            </label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              required
-              autocomplete="current-password"
-              class="w-full px-4 py-3 bg-kaju-dark border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/50 transition"
-              placeholder="••••••••"
-            />
-          </div>
-          <button
-            type="submit"
-            class="w-full py-3 bg-kaju-red hover:bg-red-700 text-white font-semibold rounded-xl transition"
-          >
-            {t.auth.loginBtn}
-          </button>
+        <form id="magic-link-form" data-sent-message={copy.sent} data-error-message={copy.error} class="space-y-4">
+          <label class="block text-sm font-medium text-gray-300">
+            {copy.email}
+            <input id="email" type="email" required autocomplete="email" placeholder={copy.placeholder} class="mt-1.5 w-full rounded-xl border border-white/10 bg-kaju-dark px-4 py-3 text-white placeholder-gray-500 focus:border-white/50 focus:outline-none" />
+          </label>
+          <button id="magic-link-submit" type="submit" class="w-full rounded-xl bg-kaju-red py-3 font-semibold text-white transition hover:bg-red-700">{copy.send}</button>
         </form>
+
+        <p class="mt-5 text-center text-xs leading-5 text-white/40">{copy.notFound}</p>
       </div>
     </div>
   </div>
 </Layout>
+
+<script>
+  import { getSupabaseBrowserClient } from '../lib/supabase-client';
+
+  const query = new URLSearchParams(window.location.search);
+  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+  const callbackType = query.get('type') || hash.get('type');
+  const code = query.get('code');
+  const accessToken = hash.get('access_token') ?? query.get('access_token');
+  const refreshToken = hash.get('refresh_token') ?? query.get('refresh_token');
+  const tokenHash = hash.get('token_hash') ?? query.get('token_hash');
+  const isCallback = Boolean(code || accessToken || refreshToken || tokenHash || query.get('callback') === 'ready');
+  const supabase = getSupabaseBrowserClient();
+  const form = document.querySelector<HTMLFormElement>('#magic-link-form');
+  const email = document.querySelector<HTMLInputElement>('#email');
+  const submit = document.querySelector<HTMLButtonElement>('#magic-link-submit');
+  const message = document.querySelector<HTMLElement>('#auth-message');
+  const sentMessage = form?.dataset.sentMessage ?? 'Check your email.';
+  const errorMessage = form?.dataset.errorMessage ?? 'The access link could not be completed.';
+
+  function showMessage(text: string, isError = true) {
+    if (!message) return;
+    message.textContent = text;
+    message.classList.toggle('border-green-500/40', !isError);
+    message.classList.toggle('bg-green-500/10', !isError);
+    message.classList.toggle('text-green-300', !isError);
+    message.removeAttribute('hidden');
+  }
+
+  async function getSession() {
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) return session;
+      await new Promise((resolve) => window.setTimeout(resolve, 250));
+    }
+    return null;
+  }
+
+  async function finishCallback() {
+    if (!isCallback) {
+      const session = await getSession();
+      if (session) window.location.replace('/members');
+      return;
+    }
+
+    if (code) {
+      const type = callbackType || 'magiclink';
+      window.location.replace(`/api/auth/callback?code=${encodeURIComponent(code)}&type=${encodeURIComponent(type)}`);
+      return;
+    }
+
+    if (accessToken && refreshToken) {
+      const { error } = await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+      if (error) throw error;
+    } else if (tokenHash) {
+      const type = callbackType === 'invite' ? 'invite' : 'email';
+      const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type });
+      if (error) throw error;
+    }
+
+    const session = await getSession();
+    if (!session) throw new Error('Missing authentication session');
+    if (callbackType === 'invite') {
+      await supabase.auth.signOut();
+      window.location.replace('/login?confirmed=1');
+    } else {
+      window.location.replace('/members');
+    }
+  }
+
+  finishCallback().catch(() => showMessage(errorMessage));
+
+  form?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const value = email?.value.trim().toLowerCase() ?? '';
+    if (!value) return;
+    if (submit) { submit.disabled = true; submit.textContent = '…'; }
+
+    const { error } = await supabase.auth.signInWithOtp({
+      email: value,
+      options: {
+        shouldCreateUser: false,
+        emailRedirectTo: `${window.location.origin}/login?type=magiclink`,
+      },
+    });
+
+    if (error) {
+      showMessage(error.message);
+      if (submit) { submit.disabled = false; submit.textContent = 'Reintentar'; }
+      return;
+    }
+
+    showMessage(sentMessage, false);
+    if (email) email.disabled = true;
+    if (submit) submit.classList.add('opacity-60');
+  });
+</script>

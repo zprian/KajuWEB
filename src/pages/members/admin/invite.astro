@@ -1,0 +1,153 @@
+---
+export const prerender = false;
+import MembersLayout from '../../../layouts/MembersLayout.astro';
+import { getLangFromUrl } from '../../../i18n/utils';
+import { createSupabaseServerClient } from '../../../lib/supabase-server';
+import { createSupabaseAdminClient } from '../../../lib/supabase-admin';
+
+const lang = getLangFromUrl(Astro.url);
+const supabase = createSupabaseServerClient(Astro.cookies, Astro.request);
+const { data: { user } } = await supabase.auth.getUser();
+const { data: currentProfile } = await supabase.from('profiles').select('*').eq('id', user!.id).single();
+const isAdmin = currentProfile?.role === 'admin' || currentProfile?.role === 'instructor';
+
+if (!isAdmin) return Astro.redirect('/members/admin/users');
+
+const userName = currentProfile ? `${currentProfile.name} ${currentProfile.surname}`.trim() : user!.email ?? '';
+const errorDetail = Astro.url.searchParams.get('reason');
+const copy = lang === 'en'
+  ? {
+      kicker: 'Private registration', title: 'Invite a member.', text: 'New accounts are invitation-only. The member will receive an email to confirm the account.', email: 'Email', name: 'First name', surname: 'Surname', belt: 'Current belt', send: 'Send invitation', sent: 'Invitation sent. The member must confirm the account from the email.', error: 'The invitation could not be sent.', exists: 'This email already has a Supabase account. Use the pending list below to resend access.', missing: 'The server-only Supabase secret key is not configured yet.', pendingTitle: 'Pending invitations', pendingText: 'Unconfirmed accounts appear here. Older entries may have an expired confirmation link.', noPending: 'There are no pending invitations.', pending: 'Pending', possibleExpired: 'Possible expired link', resend: 'Resend access email', resent: 'Access email resent.', resendError: 'The access email could not be resent.'
+    }
+  : lang === 'ca'
+    ? {
+        kicker: 'Registre privat', title: 'Convidar un membre.', text: 'Els comptes nous només funcionen per invitació. El membre rebrà un correu per confirmar el compte.', email: 'Correu electrònic', name: 'Nom', surname: 'Cognoms', belt: 'Cinturó actual', send: 'Enviar invitació', sent: 'Invitació enviada. El membre ha de confirmar el compte des del correu.', error: 'No s’ha pogut enviar la invitació.', exists: 'Aquest correu ja té un compte de Supabase. Fes servir la llista inferior per reenviar l’accés.', missing: 'La clau secreta de Supabase encara no està configurada.', pendingTitle: 'Invitacions pendents', pendingText: 'Els comptes no confirmats apareixen aquí. Les entrades antigues poden tenir l’enllaç caducat.', noPending: 'No hi ha invitacions pendents.', pending: 'Pendent', possibleExpired: 'Enllaç possiblement caducat', resend: 'Reenviar correu d’accés', resent: 'Correu d’accés reenviat.', resendError: 'No s’ha pogut reenviar el correu d’accés.'
+      }
+    : {
+        kicker: 'Registro privado', title: 'Invitar a un miembro.', text: 'Las cuentas nuevas funcionan solo por invitación. El miembro recibirá un email para confirmar la cuenta.', email: 'Email', name: 'Nombre', surname: 'Apellidos', belt: 'Cinturón actual', send: 'Enviar invitación', sent: 'Invitación enviada. El miembro debe confirmar la cuenta desde el email.', error: 'No se ha podido enviar la invitación.', exists: 'Este email ya tiene una cuenta de Supabase. Usa la lista inferior para reenviar el acceso.', missing: 'La clave secreta de Supabase todavía no está configurada.', pendingTitle: 'Invitaciones pendientes', pendingText: 'Las cuentas no confirmadas aparecen aquí. Las entradas antiguas pueden tener el enlace caducado.', noPending: 'No hay invitaciones pendientes.', pending: 'Pendiente', possibleExpired: 'Enlace posiblemente caducado', resend: 'Reenviar email de acceso', resent: 'Email de acceso reenviado.', resendError: 'No se ha podido reenviar el email de acceso.'
+      };
+
+let result: 'sent' | 'error' | 'exists' | 'missing' | 'resent' | 'resend-error' | null = Astro.url.searchParams.get('result') as 'sent' | 'error' | 'exists' | 'missing' | 'resent' | 'resend-error' | null;
+let adminClient: ReturnType<typeof createSupabaseAdminClient> | null = null;
+try {
+  adminClient = createSupabaseAdminClient();
+} catch {
+  // The page remains usable for viewing existing data, but sending requires the secret key.
+}
+
+const redirectTo = `${import.meta.env.PUBLIC_SITE_URL || Astro.url.origin}/login?type=invite`;
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const action = form.get('action')?.toString() ?? 'invite';
+
+  if (!adminClient) return Astro.redirect(`${Astro.url.pathname}?result=missing`);
+
+  if (action === 'resend') {
+    const userId = form.get('user_id')?.toString() ?? '';
+    const { data: existingUser, error: userError } = await adminClient.auth.admin.getUserById(userId);
+    const email = existingUser.user?.email;
+
+    if (userError || !email) {
+      const reason = encodeURIComponent(userError?.message ?? 'The selected user could not be found.');
+      return Astro.redirect(`${Astro.url.pathname}?result=resend-error&reason=${reason}`);
+    }
+
+    const { error } = await adminClient.auth.resend({
+      type: 'signup',
+      email,
+      options: { emailRedirectTo: redirectTo },
+    });
+
+    if (error) return Astro.redirect(`${Astro.url.pathname}?result=resend-error&reason=${encodeURIComponent(error.message)}`);
+    return Astro.redirect(`${Astro.url.pathname}?result=resent`);
+  }
+
+  const email = form.get('email')?.toString().trim().toLowerCase() ?? '';
+  const name = form.get('name')?.toString().trim() ?? '';
+  const surname = form.get('surname')?.toString().trim() ?? '';
+  const belt = form.get('belt')?.toString() ?? 'white';
+
+  const { data, error } = await adminClient.auth.admin.inviteUserByEmail(email, {
+    data: { name, surname },
+    redirectTo,
+  });
+
+  if (error || !data.user) {
+    const errorMessage = error?.message.toLowerCase() ?? '';
+    const outcome = errorMessage.includes('already') || errorMessage.includes('registered') || errorMessage.includes('exists') ? 'exists' : 'error';
+    return Astro.redirect(`${Astro.url.pathname}?result=${outcome}&reason=${encodeURIComponent(error?.message ?? 'Supabase did not return a user.')}`);
+  }
+
+  await adminClient.from('profiles').upsert({
+    id: data.user.id,
+    name,
+    surname,
+    belt,
+    role: 'member',
+    active: true,
+  });
+
+  return Astro.redirect(`${Astro.url.pathname}?result=sent`);
+}
+
+let pendingInvites: Array<{ id: string; email: string; name: string; sentAt: string | null; probablyExpired: boolean }> = [];
+let pendingError = false;
+if (adminClient) {
+  const { data: userList, error } = await adminClient.auth.admin.listUsers({ page: 1, perPage: 1000 });
+  pendingError = Boolean(error);
+  pendingInvites = (userList?.users ?? [])
+    .filter((account) => account.email && !account.email_confirmed_at && !account.confirmed_at)
+    .map((account) => {
+      const sentAt = account.confirmation_sent_at ?? account.invited_at ?? account.created_at ?? null;
+      const probablyExpired = sentAt ? Date.now() - new Date(sentAt).getTime() > 60 * 60 * 1000 : false;
+      return {
+        id: account.id,
+        email: account.email!,
+        name: account.user_metadata?.name ?? '',
+        sentAt,
+        probablyExpired,
+      };
+    })
+    .sort((a, b) => (b.sentAt ?? '').localeCompare(a.sentAt ?? ''));
+}
+
+function displayDate(value: string | null) {
+  if (!value) return '—';
+  return new Date(value).toLocaleString(lang === 'en' ? 'en-GB' : 'es-ES', { dateStyle: 'medium', timeStyle: 'short' });
+}
+---
+
+<MembersLayout title={copy.kicker} lang={lang} userName={userName} belt={currentProfile?.belt} role={currentProfile?.role} isAdmin={true}>
+  <div class="space-y-8">
+    <div><p class="text-[0.68rem] font-bold uppercase tracking-[0.28em] text-kaju-red">{copy.kicker}</p><h1 class="mt-4 max-w-2xl font-heading text-5xl uppercase leading-none tracking-[-.03em] text-white sm:text-7xl">{copy.title}</h1><p class="mt-5 max-w-2xl text-base leading-7 text-white/50">{copy.text}</p></div>
+    {result === 'sent' && <div class="rounded-2xl border border-green-500/40 bg-green-500/10 px-5 py-4 text-sm text-green-300">{copy.sent}</div>}
+    {result === 'resent' && <div class="rounded-2xl border border-green-500/40 bg-green-500/10 px-5 py-4 text-sm text-green-300">{copy.resent}</div>}
+    {result === 'error' && <div class="rounded-2xl border border-red-500/40 bg-red-500/10 px-5 py-4 text-sm text-red-300"><p>{copy.error}</p>{errorDetail && <code class="mt-2 block break-words text-xs text-red-200/80">{errorDetail}</code>}</div>}
+    {result === 'resend-error' && <div class="rounded-2xl border border-red-500/40 bg-red-500/10 px-5 py-4 text-sm text-red-300"><p>{copy.resendError}</p>{errorDetail && <code class="mt-2 block break-words text-xs text-red-200/80">{errorDetail}</code>}</div>}
+    {result === 'exists' && <div class="rounded-2xl border border-yellow-500/40 bg-yellow-500/10 px-5 py-4 text-sm text-yellow-200"><p>{copy.exists}</p>{errorDetail && <code class="mt-2 block break-words text-xs text-yellow-100/80">{errorDetail}</code>}</div>}
+    {result === 'missing' && <div class="rounded-2xl border border-yellow-500/40 bg-yellow-500/10 px-5 py-4 text-sm text-yellow-200">{copy.missing}</div>}
+
+    <form method="POST" class="max-w-2xl space-y-5 rounded-2xl border border-white/10 bg-[#151517] p-6 sm:p-8">
+      <div class="grid gap-5 sm:grid-cols-2">
+        <label class="block text-sm text-white/65">{copy.name}<input name="name" required class="mt-2 w-full rounded-xl border border-white/10 bg-[#0f0f11] px-4 py-3 text-white outline-none focus:border-kaju-red" /></label>
+        <label class="block text-sm text-white/65">{copy.surname}<input name="surname" required class="mt-2 w-full rounded-xl border border-white/10 bg-[#0f0f11] px-4 py-3 text-white outline-none focus:border-kaju-red" /></label>
+      </div>
+      <label class="block text-sm text-white/65">{copy.email}<input name="email" type="email" required autocomplete="email" class="mt-2 w-full rounded-xl border border-white/10 bg-[#0f0f11] px-4 py-3 text-white outline-none focus:border-kaju-red" /></label>
+      <label class="block text-sm text-white/65">{copy.belt}<select name="belt" class="mt-2 w-full rounded-xl border border-white/10 bg-[#0f0f11] px-4 py-3 text-white outline-none focus:border-kaju-red"><option value="white">White</option><option value="yellow">Yellow</option><option value="orange">Orange</option><option value="purple">Purple</option><option value="blue">Blue</option><option value="green">Green</option><option value="brown">Brown</option><option value="black">Black</option></select></label>
+      <button type="submit" class="rounded-full bg-kaju-red px-6 py-3 text-sm font-bold uppercase tracking-[0.12em] text-white transition hover:bg-red-700">{copy.send}</button>
+    </form>
+
+    <section class="max-w-3xl space-y-4">
+      <div><p class="text-[0.68rem] font-bold uppercase tracking-[0.22em] text-white/45">{copy.pendingTitle}</p><p class="mt-2 text-sm leading-6 text-white/45">{copy.pendingText}</p></div>
+      {(!adminClient || pendingError) && <div class="rounded-2xl border border-yellow-500/40 bg-yellow-500/10 p-5 text-sm text-yellow-200">{copy.missing}</div>}
+      {adminClient && !pendingError && pendingInvites.length === 0 && <div class="rounded-2xl border border-dashed border-white/15 bg-white/[.02] p-5 text-sm text-white/40">{copy.noPending}</div>}
+      {pendingInvites.map((pending) => (
+        <article class="flex flex-col justify-between gap-5 rounded-2xl border border-white/10 bg-[#151517] p-5 sm:flex-row sm:items-center">
+          <div><p class="font-semibold text-white">{pending.name || pending.email}</p><p class="mt-1 text-sm text-white/45">{pending.name ? pending.email : ''}</p><p class="mt-3 text-xs uppercase tracking-[0.12em] text-white/35">{pending.probablyExpired ? copy.possibleExpired : copy.pending} · {displayDate(pending.sentAt)}</p></div>
+          <form method="POST"><input type="hidden" name="action" value="resend" /><input type="hidden" name="user_id" value={pending.id} /><button type="submit" class="rounded-full border border-kaju-red/50 px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-kaju-red transition hover:bg-kaju-red hover:text-white">{copy.resend}</button></form>
+        </article>
+      ))}
+    </section>
+  </div>
+</MembersLayout>

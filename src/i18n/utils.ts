@@ -38,5 +38,6 @@ export const BELT_ORDER: Record<string, number> = {
 export const BELTS = Object.keys(BELT_ORDER) as string[];
 
 export function canAccessBelt(userBelt: string, requiredBelt: string): boolean {
-  return (BELT_ORDER[userBelt] ?? 0) >= (BELT_ORDER[requiredBelt] ?? 0);
+  // Members can train their current grade and preview the next grade.
+  return (BELT_ORDER[userBelt] ?? 0) + 1 >= (BELT_ORDER[requiredBelt] ?? 0);
 }

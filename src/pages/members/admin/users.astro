@@ -1,0 +1,245 @@
+---
+export const prerender = false;
+import MembersLayout from '../../../layouts/MembersLayout.astro';
+import { getLangFromUrl, useTranslations, BELTS } from '../../../i18n/utils';
+import { createSupabaseServerClient } from '../../../lib/supabase-server';
+import { createSupabaseAdminClient } from '../../../lib/supabase-admin';
+import { getEffectiveRole } from '../../../lib/view-as';
+
+const lang = getLangFromUrl(Astro.url);
+const t = useTranslations(lang);
+const supabase = createSupabaseServerClient(Astro.cookies, Astro.request);
+const { data: { user } } = await supabase.auth.getUser();
+const { data: currentProfile } = await supabase.from('profiles').select('*').eq('id', user!.id).single();
+const actualRole = currentProfile?.role ?? 'member';
+const effectiveRole = getEffectiveRole(Astro.cookies, actualRole);
+const isStaff = actualRole === 'admin' || actualRole === 'instructor';
+const isSystemAdmin = effectiveRole === 'admin';
+const canManageUsers = isStaff && effectiveRole !== 'member';
+
+if (!isStaff || effectiveRole === 'member') return Astro.redirect('/members');
+
+const copy = lang === 'en'
+  ? {
+      kicker: 'User management', title: 'The people behind the practice.', text: 'Manage members, grades, licenses and access from one place.', members: 'Members', pending: 'Pending invitations', invitation: 'Invite a member', invitationText: 'New accounts remain invitation-only. The member will receive an email to confirm the account.', send: 'Send invitation', resend: 'Resend access email', pendingTitle: 'Pending access', pendingText: 'Pending accounts remain visible here after a refresh so you can resend access when needed.', noPending: 'There are no pending invitations.', possibleExpired: 'Possible expired link', waiting: 'Waiting for confirmation', sent: 'Invitation sent.', resent: 'Access email resent.', updated: 'Member updated.', examAdded: 'Grade record added.', licenseAdded: 'License renewal added.', error: 'The change could not be saved.', missing: 'The server-only Supabase key is not configured.', name: 'First name', surname: 'Surname', email: 'Email', belt: 'Current belt', gradeDate: 'Grade awarded on', role: 'Role', status: 'Status', active: 'Active', inactive: 'Inactive', save: 'Save member', membership: 'Membership number', notes: 'Admin notes', history: 'Passport history', addExam: 'Record grade', examDate: 'Exam date', addLicense: 'Add license renewal', licenseNumber: 'License number', renewedOn: 'Renewed on', expiresOn: 'Expires on', licenseStatus: 'Status', admin: 'Admin', instructor: 'Master / instructor', member: 'Member', confirmed: 'Confirmed', unconfirmed: 'Unconfirmed', editHint: 'Masters can update grades and licenses. Only admins can change roles or invite users.'
+    }
+  : lang === 'ca'
+    ? {
+        kicker: 'Gestió d’usuaris', title: 'Les persones darrere de la pràctica.', text: 'Gestiona membres, graus, llicències i accessos des d’un únic lloc.', members: 'Membres', pending: 'Invitacions pendents', invitation: 'Convidar un membre', invitationText: 'Els comptes nous només funcionen per invitació. El membre rebrà un correu per confirmar el compte.', send: 'Enviar invitació', resend: 'Reenviar correu d’accés', pendingTitle: 'Accesos pendents', pendingText: 'Els comptes pendents continuen visibles després de recarregar perquè puguis reenviar l’accés quan calgui.', noPending: 'No hi ha invitacions pendents.', possibleExpired: 'Enllaç possiblement caducat', waiting: 'Esperant confirmació', sent: 'Invitació enviada.', resent: 'Correu d’accés reenviat.', updated: 'Membre actualitzat.', examAdded: 'Registre de grau afegit.', licenseAdded: 'Renovació de llicència afegida.', error: 'No s’ha pogut desar el canvi.', missing: 'La clau secreta de Supabase no està configurada.', name: 'Nom', surname: 'Cognoms', email: 'Correu electrònic', belt: 'Cinturó actual', gradeDate: 'Grau obtingut el', role: 'Rol', status: 'Estat', active: 'Actiu', inactive: 'Inactiu', save: 'Desar membre', membership: 'Número de soci', notes: 'Notes d’administració', history: 'Historial del passaport', addExam: 'Registrar grau', examDate: 'Data de l’examen', addLicense: 'Afegir renovació', licenseNumber: 'Número de llicència', renewedOn: 'Renovat el', expiresOn: 'Caduca el', licenseStatus: 'Estat', admin: 'Administrador', instructor: 'Mestre / instructor', member: 'Membre', confirmed: 'Confirmat', unconfirmed: 'No confirmat', editHint: 'Els mestres poden actualitzar graus i llicències. Només els administradors poden canviar rols o convidar usuaris.'
+      }
+    : {
+        kicker: 'Gestión de usuarios', title: 'Las personas detrás de la práctica.', text: 'Gestiona miembros, grados, licencias y accesos desde un único lugar.', members: 'Miembros', pending: 'Invitaciones pendientes', invitation: 'Invitar a un miembro', invitationText: 'Las cuentas nuevas funcionan solo por invitación. El miembro recibirá un email para confirmar la cuenta.', send: 'Enviar invitación', resend: 'Reenviar email de acceso', pendingTitle: 'Accesos pendientes', pendingText: 'Las cuentas pendientes siguen visibles después de actualizar la página para poder reenviar el acceso cuando sea necesario.', noPending: 'No hay invitaciones pendientes.', possibleExpired: 'Enlace posiblemente caducado', waiting: 'Esperando confirmación', sent: 'Invitación enviada.', resent: 'Email de acceso reenviado.', updated: 'Miembro actualizado.', examAdded: 'Registro de grado añadido.', licenseAdded: 'Renovación de licencia añadida.', error: 'No se ha podido guardar el cambio.', missing: 'La clave secreta de Supabase no está configurada.', name: 'Nombre', surname: 'Apellidos', email: 'Email', belt: 'Cinturón actual', gradeDate: 'Grado obtenido el', role: 'Rol', status: 'Estado', active: 'Activo', inactive: 'Inactivo', save: 'Guardar miembro', membership: 'Número de socio', notes: 'Notas de administración', history: 'Historial del pasaporte', addExam: 'Registrar grado', examDate: 'Fecha del examen', addLicense: 'Añadir renovación', licenseNumber: 'Número de licencia', renewedOn: 'Renovada el', expiresOn: 'Caduca el', licenseStatus: 'Estado', admin: 'Administrador', instructor: 'Maestro / instructor', member: 'Miembro', confirmed: 'Confirmado', unconfirmed: 'No confirmado', editHint: 'Los maestros pueden actualizar grados y licencias. Solo los administradores pueden cambiar roles o invitar usuarios.'
+      };
+
+const beltOptions = BELTS;
+const roleOptions = ['member', 'instructor', 'admin'] as const;
+const allowedStatuses = ['active', 'expiring', 'expired', 'pending'] as const;
+const result = Astro.url.searchParams.get('result');
+const errorDetail = Astro.url.searchParams.get('reason');
+
+function redirectResult(value: string, reason?: string) {
+  const suffix = reason ? `&reason=${encodeURIComponent(reason)}` : '';
+  return Astro.redirect(`${Astro.url.pathname}?result=${value}${suffix}`);
+}
+
+let adminClient: ReturnType<typeof createSupabaseAdminClient> | null = null;
+try {
+  adminClient = createSupabaseAdminClient();
+} catch {
+  // Profile management still works through RLS; invitations require the secret key.
+}
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const action = form.get('action')?.toString() ?? '';
+
+  if (action === 'update-profile') {
+    const profileId = form.get('profile_id')?.toString() ?? '';
+    const nextRole = form.get('role')?.toString() ?? 'member';
+    const gradeDate = form.get('grade_date')?.toString() ?? '';
+    const updates: Record<string, string | boolean | null> = {
+      name: form.get('name')?.toString().trim() ?? '',
+      surname: form.get('surname')?.toString().trim() ?? '',
+      phone: form.get('phone')?.toString().trim() || null,
+      belt: beltOptions.includes(form.get('belt')?.toString() as (typeof beltOptions)[number]) ? form.get('belt')?.toString() ?? 'white' : 'white',
+      membership_number: form.get('membership_number')?.toString().trim() || null,
+      admin_notes: form.get('admin_notes')?.toString().trim() || null,
+      active: form.get('active') === '1',
+    };
+
+    if (isSystemAdmin) {
+      if (profileId === user!.id && nextRole !== currentProfile?.role) return redirectResult('error', 'You cannot change your own administrator role.');
+      updates.role = roleOptions.includes(nextRole as (typeof roleOptions)[number]) ? nextRole : 'member';
+    }
+
+    const { error } = await supabase.from('profiles').update(updates).eq('id', profileId);
+    if (!error && gradeDate) {
+      const gradeBelt = updates.belt?.toString() ?? 'white';
+      const { data: existingGrade } = await supabase.from('exam_records').select('id').eq('profile_id', profileId).eq('belt', gradeBelt).order('exam_date', { ascending: false }).limit(1).maybeSingle();
+      const gradeResult = existingGrade
+        ? await supabase.from('exam_records').update({ exam_date: gradeDate }).eq('id', existingGrade.id)
+        : await supabase.from('exam_records').insert({ profile_id: profileId, belt: gradeBelt, exam_date: gradeDate });
+      if (gradeResult.error) return redirectResult('error', gradeResult.error.message);
+    }
+    return redirectResult(error ? 'error' : 'updated', error?.message);
+  }
+
+  if (action === 'add-exam') {
+    const belt = form.get('belt')?.toString() ?? '';
+    const examDate = form.get('exam_date')?.toString() ?? '';
+    const profileId = form.get('profile_id')?.toString() ?? '';
+    if (!beltOptions.includes(belt as (typeof beltOptions)[number]) || !examDate || !profileId) return redirectResult('error', 'Missing grade record data.');
+    const { error } = await supabase.from('exam_records').insert({ profile_id: profileId, belt, exam_date: examDate, instructor_name: form.get('instructor_name')?.toString().trim() || null, notes: form.get('exam_notes')?.toString().trim() || null });
+    return redirectResult(error ? 'error' : 'exam-added', error?.message);
+  }
+
+  if (action === 'add-license') {
+    const profileId = form.get('profile_id')?.toString() ?? '';
+    const renewedOn = form.get('renewed_on')?.toString() ?? '';
+    const licenseStatus = form.get('license_status')?.toString() ?? 'active';
+    if (!profileId || !renewedOn || !allowedStatuses.includes(licenseStatus as (typeof allowedStatuses)[number])) return redirectResult('error', 'Missing license data.');
+    const { error } = await supabase.from('license_renewals').insert({ profile_id: profileId, license_number: form.get('license_number')?.toString().trim() || null, renewed_on: renewedOn, expires_on: form.get('expires_on')?.toString() || null, status: licenseStatus, notes: form.get('license_notes')?.toString().trim() || null });
+    return redirectResult(error ? 'error' : 'license-added', error?.message);
+  }
+
+  if (action === 'invite' || action === 'resend') {
+    if (!canManageUsers || !adminClient) return redirectResult('error', 'Only administrators and masters can manage invitations.');
+
+    if (action === 'resend') {
+      const userId = form.get('user_id')?.toString() ?? '';
+      const { data: existingUser, error: userError } = await adminClient.auth.admin.getUserById(userId);
+      const email = existingUser.user?.email;
+      if (userError || !email) return redirectResult('error', userError?.message ?? 'The selected user could not be found.');
+      const { error } = await adminClient.auth.resend({ type: 'signup', email, options: { emailRedirectTo: `${import.meta.env.PUBLIC_SITE_URL || Astro.url.origin}/login?type=invite` } });
+      return redirectResult(error ? 'error' : 'resent', error?.message);
+    }
+
+    const email = form.get('email')?.toString().trim().toLowerCase() ?? '';
+    const name = form.get('invite_name')?.toString().trim() ?? '';
+    const surname = form.get('invite_surname')?.toString().trim() ?? '';
+    const belt = form.get('invite_belt')?.toString() ?? 'white';
+    const { data, error } = await adminClient.auth.admin.inviteUserByEmail(email, { data: { name, surname }, redirectTo: `${import.meta.env.PUBLIC_SITE_URL || Astro.url.origin}/login?type=invite` });
+    if (error || !data.user) return redirectResult('error', error?.message ?? 'Supabase did not return a user.');
+    await adminClient.from('profiles').upsert({ id: data.user.id, name, surname, belt: beltOptions.includes(belt as (typeof beltOptions)[number]) ? belt : 'white', role: 'member', active: true });
+    return redirectResult('sent');
+  }
+
+  return redirectResult('error', 'Unknown action.');
+}
+
+const { data: profiles } = await supabase.from('profiles').select('*').order('surname').order('name');
+const profileRows = profiles ?? [];
+const profileIds = profileRows.map((profile) => profile.id);
+const [{ data: exams }, { data: licenses }] = profileIds.length
+  ? await Promise.all([
+      supabase.from('exam_records').select('*').in('profile_id', profileIds).order('exam_date', { ascending: false }),
+      supabase.from('license_renewals').select('*').in('profile_id', profileIds).order('renewed_on', { ascending: false }),
+    ])
+  : [{ data: [] }, { data: [] }];
+
+const examsByProfile = new Map<string, typeof exams>();
+for (const exam of exams ?? []) examsByProfile.set(exam.profile_id, [...(examsByProfile.get(exam.profile_id) ?? []), exam]);
+const licensesByProfile = new Map<string, typeof licenses>();
+for (const license of licenses ?? []) licensesByProfile.set(license.profile_id, [...(licensesByProfile.get(license.profile_id) ?? []), license]);
+
+let authById = new Map<string, { email: string; confirmed: boolean }>();
+let pendingInvites: Array<{ id: string; email: string; name: string; sentAt: string | null; probablyExpired: boolean }> = [];
+if (adminClient) {
+  const { data: userList } = await adminClient.auth.admin.listUsers({ page: 1, perPage: 1000 });
+  authById = new Map((userList?.users ?? []).map((account) => [account.id, { email: account.email ?? '', confirmed: Boolean(account.email_confirmed_at || account.confirmed_at) }]));
+  pendingInvites = (userList?.users ?? [])
+    .filter((account) => account.email && !account.email_confirmed_at && !account.confirmed_at)
+    .map((account) => {
+      const sentAt = account.confirmation_sent_at ?? account.invited_at ?? account.created_at ?? null;
+      return { id: account.id, email: account.email!, name: account.user_metadata?.name ?? '', sentAt, probablyExpired: sentAt ? Date.now() - new Date(sentAt).getTime() > 60 * 60 * 1000 : false };
+    })
+    .sort((a, b) => (b.sentAt ?? '').localeCompare(a.sentAt ?? ''));
+}
+
+function displayDate(value: string | null | undefined) {
+  if (!value) return '—';
+  return new Date(value).toLocaleDateString(lang === 'en' ? 'en-GB' : 'es-ES');
+}
+
+function beltLabel(belt: string) {
+  return t.members.beltLabel[belt as keyof typeof t.members.beltLabel] ?? belt;
+}
+
+function roleLabel(role: string) {
+  return role === 'admin' ? copy.admin : role === 'instructor' ? copy.instructor : copy.member;
+}
+---
+
+<MembersLayout title={copy.kicker} lang={lang} userName={`${currentProfile?.name ?? ''} ${currentProfile?.surname ?? ''}`.trim()} belt={currentProfile?.belt} role={actualRole} isAdmin={isStaff}>
+  <div class="space-y-10">
+    <div>
+      <p class="text-[0.68rem] font-bold uppercase tracking-[0.28em] text-kaju-red">{copy.kicker}</p>
+      <h1 class="mt-4 max-w-3xl font-heading text-5xl uppercase leading-none tracking-[-.03em] text-white sm:text-7xl">{copy.title}</h1>
+      <p class="mt-5 max-w-2xl text-base leading-7 text-white/50">{copy.text}</p>
+    </div>
+
+    {result === 'sent' && <div class="rounded-2xl border border-green-500/40 bg-green-500/10 px-5 py-4 text-sm text-green-300">{copy.sent}</div>}
+    {result === 'resent' && <div class="rounded-2xl border border-green-500/40 bg-green-500/10 px-5 py-4 text-sm text-green-300">{copy.resent}</div>}
+    {result === 'updated' && <div class="rounded-2xl border border-green-500/40 bg-green-500/10 px-5 py-4 text-sm text-green-300">{copy.updated}</div>}
+    {result === 'exam-added' && <div class="rounded-2xl border border-green-500/40 bg-green-500/10 px-5 py-4 text-sm text-green-300">{copy.examAdded}</div>}
+    {result === 'license-added' && <div class="rounded-2xl border border-green-500/40 bg-green-500/10 px-5 py-4 text-sm text-green-300">{copy.licenseAdded}</div>}
+    {result === 'error' && <div class="rounded-2xl border border-red-500/40 bg-red-500/10 px-5 py-4 text-sm text-red-300"><p>{copy.error}</p>{errorDetail && <code class="mt-2 block break-words text-xs text-red-200/80">{errorDetail}</code>}</div>}
+
+    <section class="grid gap-3 sm:grid-cols-3">
+      <div class="rounded-2xl border border-white/10 bg-[#151517] p-5"><p class="text-[0.65rem] font-bold uppercase tracking-[0.15em] text-white/40">{copy.members}</p><p class="mt-5 font-heading text-4xl text-white">{profileRows.length}</p></div>
+      <div class="rounded-2xl border border-white/10 bg-[#151517] p-5"><p class="text-[0.65rem] font-bold uppercase tracking-[0.15em] text-white/40">{copy.pending}</p><p class="mt-5 font-heading text-4xl text-kaju-red">{pendingInvites.length}</p></div>
+      <div class="rounded-2xl border border-white/10 bg-[#151517] p-5"><p class="text-[0.65rem] font-bold uppercase tracking-[0.15em] text-white/40">{copy.status}</p><p class="mt-5 text-sm text-white/55">{isSystemAdmin ? copy.admin : copy.instructor}</p></div>
+    </section>
+
+    {canManageUsers && <section class="space-y-5 rounded-2xl border border-kaju-red/30 bg-kaju-red/10 p-6 sm:p-8">
+      <div><p class="text-[0.68rem] font-bold uppercase tracking-[0.2em] text-kaju-red">{copy.invitation}</p><p class="mt-2 max-w-2xl text-sm leading-6 text-white/55">{copy.invitationText}</p></div>
+      {adminClient ? <form method="POST" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <input type="hidden" name="action" value="invite" />
+        <input name="invite_name" required placeholder={copy.name} class="rounded-xl border border-white/10 bg-[#151517] px-4 py-3 text-sm text-white placeholder:text-white/35" />
+        <input name="invite_surname" required placeholder={copy.surname} class="rounded-xl border border-white/10 bg-[#151517] px-4 py-3 text-sm text-white placeholder:text-white/35" />
+        <input name="email" type="email" required placeholder={copy.email} class="rounded-xl border border-white/10 bg-[#151517] px-4 py-3 text-sm text-white placeholder:text-white/35" />
+        <select name="invite_belt" class="rounded-xl border border-white/10 bg-[#151517] px-4 py-3 text-sm text-white">{beltOptions.map((belt) => <option value={belt}>{beltLabel(belt)}</option>)}</select>
+        <button type="submit" class="rounded-xl bg-kaju-red px-5 py-3 text-sm font-bold text-white transition hover:bg-red-700">{copy.send}</button>
+      </form> : <p class="rounded-xl border border-yellow-500/40 bg-yellow-500/10 p-4 text-sm text-yellow-200">{copy.missing}</p>}
+    </section>}
+
+    <section class="space-y-5">
+      <div class="flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><p class="text-[0.68rem] font-bold uppercase tracking-[0.2em] text-white/45">{copy.members}</p><p class="mt-2 text-sm text-white/40">{copy.editHint}</p></div><input id="member-search" type="search" placeholder="Buscar..." class="rounded-full border border-white/10 bg-[#151517] px-4 py-2.5 text-sm text-white placeholder:text-white/30 outline-none focus:border-kaju-red" /></div>
+      <div class="grid gap-4">
+        {profileRows.map((member) => {
+          const memberExams = examsByProfile.get(member.id) ?? [];
+          const memberLicenses = licensesByProfile.get(member.id) ?? [];
+          const currentGrade = memberExams.find((exam) => exam.belt === member.belt);
+          const auth = authById.get(member.id);
+          const memberName = `${member.name} ${member.surname}`.trim() || auth?.email || member.id;
+          return <article data-member-card data-search={`${memberName} ${auth?.email ?? ''} ${member.belt} ${member.role}`} class="member-card rounded-2xl border border-white/10 bg-[#151517] p-5 sm:p-6">
+            <div class="flex flex-col justify-between gap-5 lg:flex-row lg:items-start">
+              <div><div class="flex flex-wrap items-center gap-2"><h2 class="font-heading text-3xl uppercase text-white">{memberName}</h2><span class="rounded-full border border-kaju-red/30 bg-kaju-red/10 px-2.5 py-1 text-[0.62rem] font-bold uppercase tracking-[0.1em] text-kaju-red">{beltLabel(member.belt)}</span><span class="rounded-full border border-white/10 px-2.5 py-1 text-[0.62rem] font-bold uppercase tracking-[0.1em] text-white/45">{roleLabel(member.role)}</span></div><p class="mt-2 text-sm text-white/45">{auth?.email ?? '—'} · {auth?.confirmed ? copy.confirmed : copy.unconfirmed}</p><p class={`mt-2 text-xs uppercase tracking-[0.12em] ${member.active ? 'text-green-300/70' : 'text-white/35'}`}>{member.active ? copy.active : copy.inactive}</p></div>
+              <details class="group"><summary class="cursor-pointer list-none rounded-full border border-white/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.1em] text-white/60 transition hover:border-kaju-red/50 hover:text-white">{copy.save} <span class="ml-1 text-white/30 transition group-open:rotate-180">⌄</span></summary>
+                <div class="mt-5 grid gap-5 border-t border-white/10 pt-5 xl:grid-cols-3">
+                  <form method="POST" class="space-y-3 xl:col-span-2"><input type="hidden" name="action" value="update-profile" /><input type="hidden" name="profile_id" value={member.id} /><div class="grid gap-3 sm:grid-cols-2"><input name="name" value={member.name} required placeholder={copy.name} class="rounded-xl border border-white/10 bg-[#0f0f11] px-3 py-2.5 text-sm text-white" /><input name="surname" value={member.surname} required placeholder={copy.surname} class="rounded-xl border border-white/10 bg-[#0f0f11] px-3 py-2.5 text-sm text-white" /></div><input name="phone" value={member.phone ?? ''} placeholder="Teléfono" class="w-full rounded-xl border border-white/10 bg-[#0f0f11] px-3 py-2.5 text-sm text-white" /><div class="grid gap-3 sm:grid-cols-2"><label class="text-xs text-white/45">{copy.belt}<select name="belt" class="mt-1.5 w-full rounded-xl border border-white/10 bg-[#0f0f11] px-3 py-2.5 text-sm text-white">{beltOptions.map((belt) => <option value={belt} selected={member.belt === belt}>{beltLabel(belt)}</option>)}</select></label><label class="text-xs text-white/45">{copy.gradeDate}<input name="grade_date" type="date" value={currentGrade?.exam_date ?? ''} class="mt-1.5 w-full rounded-xl border border-white/10 bg-[#0f0f11] px-3 py-2.5 text-sm text-white" /></label><label class="text-xs text-white/45">{copy.membership}<input name="membership_number" value={member.membership_number ?? ''} class="w-full rounded-xl border border-white/10 bg-[#0f0f11] px-3 py-2.5 text-sm text-white" /></label></div>{isSystemAdmin ? <label class="text-xs text-white/45">{copy.role}<select name="role" class="mt-1.5 w-full rounded-xl border border-white/10 bg-[#0f0f11] px-3 py-2.5 text-sm text-white">{roleOptions.map((role) => <option value={role} selected={member.role === role}>{roleLabel(role)}</option>)}</select></label> : <p class="rounded-xl bg-white/[.03] px-3 py-2.5 text-xs text-white/45">{copy.role}: {roleLabel(member.role)}</p>}<label class="flex items-center gap-2 text-xs text-white/55"><input type="hidden" name="active" value="0" /><input type="checkbox" name="active" value="1" checked={member.active} class="accent-red-600" />{copy.active}</label><textarea name="admin_notes" rows="2" placeholder={copy.notes} class="w-full rounded-xl border border-white/10 bg-[#0f0f11] px-3 py-2.5 text-sm text-white">{member.admin_notes ?? ''}</textarea><button type="submit" class="rounded-full bg-kaju-red px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-white">{copy.save}</button></form>
+                  <div class="space-y-4"><div><p class="mb-2 text-[0.65rem] font-bold uppercase tracking-[0.14em] text-white/40">{copy.history}</p>{memberExams.length ? <ul class="space-y-1 text-xs text-white/55">{memberExams.slice(0, 4).map((exam) => <li>{beltLabel(exam.belt)} · {displayDate(exam.exam_date)}</li>)}</ul> : <p class="text-xs text-white/35">—</p>}</div><form method="POST" class="space-y-2 rounded-xl border border-white/10 bg-white/[.02] p-3"><input type="hidden" name="action" value="add-exam" /><input type="hidden" name="profile_id" value={member.id} /><p class="text-xs font-bold text-white/60">{copy.addExam}</p><select name="belt" class="w-full rounded-lg border border-white/10 bg-[#0f0f11] px-3 py-2 text-xs text-white">{beltOptions.map((belt) => <option value={belt}>{beltLabel(belt)}</option>)}</select><input name="exam_date" type="date" required class="w-full rounded-lg border border-white/10 bg-[#0f0f11] px-3 py-2 text-xs text-white" /><input name="instructor_name" placeholder={copy.instructor} class="w-full rounded-lg border border-white/10 bg-[#0f0f11] px-3 py-2 text-xs text-white" /><button type="submit" class="w-full rounded-lg border border-kaju-red/40 px-3 py-2 text-xs font-bold text-kaju-red">{copy.addExam}</button></form><form method="POST" class="space-y-2 rounded-xl border border-white/10 bg-white/[.02] p-3"><input type="hidden" name="action" value="add-license" /><input type="hidden" name="profile_id" value={member.id} /><p class="text-xs font-bold text-white/60">{copy.addLicense}</p><input name="license_number" placeholder={copy.licenseNumber} class="w-full rounded-lg border border-white/10 bg-[#0f0f11] px-3 py-2 text-xs text-white" /><input name="renewed_on" type="date" required class="w-full rounded-lg border border-white/10 bg-[#0f0f11] px-3 py-2 text-xs text-white" /><input name="expires_on" type="date" class="w-full rounded-lg border border-white/10 bg-[#0f0f11] px-3 py-2 text-xs text-white" /><select name="license_status" class="w-full rounded-lg border border-white/10 bg-[#0f0f11] px-3 py-2 text-xs text-white"><option value="active">Active</option><option value="pending">Pending</option><option value="expiring">Expiring</option><option value="expired">Expired</option></select><button type="submit" class="w-full rounded-lg border border-kaju-red/40 px-3 py-2 text-xs font-bold text-kaju-red">{copy.addLicense}</button></form>{memberLicenses.length > 0 && <ul class="space-y-1 text-xs text-white/55">{memberLicenses.slice(0, 3).map((license) => <li>{displayDate(license.renewed_on)} · {license.status}</li>)}</ul>}</div>
+                </div>
+              </details>
+            </div>
+          </article>;
+        })}
+      </div>
+    </section>
+
+    {canManageUsers && <section class="space-y-5"><div><p class="text-[0.68rem] font-bold uppercase tracking-[0.2em] text-white/45">{copy.pendingTitle}</p><p class="mt-2 text-sm leading-6 text-white/45">{copy.pendingText}</p></div>{pendingInvites.length === 0 ? <div class="rounded-2xl border border-dashed border-white/15 bg-white/[.02] p-5 text-sm text-white/40">{copy.noPending}</div> : <div class="grid gap-3">{pendingInvites.map((pending) => <article class="flex flex-col justify-between gap-4 rounded-2xl border border-white/10 bg-[#151517] p-5 sm:flex-row sm:items-center"><div><p class="font-semibold text-white">{pending.name || pending.email}</p><p class="mt-1 text-sm text-white/45">{pending.email}</p><p class="mt-3 text-xs uppercase tracking-[0.12em] text-white/35">{pending.probablyExpired ? copy.possibleExpired : copy.waiting} · {displayDate(pending.sentAt)}</p></div><div class="flex flex-wrap gap-2"><form method="POST"><input type="hidden" name="action" value="resend" /><input type="hidden" name="user_id" value={pending.id} /><button type="submit" class="rounded-full border border-kaju-red/50 px-4 py-2.5 text-xs font-bold uppercase tracking-[0.1em] text-kaju-red transition hover:bg-kaju-red hover:text-white">{copy.resend}</button></form></div></article>)}</div>}</section>}
+  </div>
+</MembersLayout>
+
+<script>
+  const search = document.querySelector<HTMLInputElement>('#member-search');
+  const cards = Array.from(document.querySelectorAll<HTMLElement>('[data-member-card]'));
+  search?.addEventListener('input', () => {
+    const term = search.value.trim().toLowerCase();
+    cards.forEach((card) => { card.hidden = term.length > 0 && !(card.dataset.search ?? '').toLowerCase().includes(term); });
+  });
+</script>
+
+<style>
+  :root { --belt-white: #f8f8f5; --belt-yellow: #f2c94c; --belt-orange: #f97316; --belt-purple: #a855f7; --belt-blue: #3b82f6; --belt-green: #22c55e; --belt-brown: #8b5a2b; --belt-black: #343438; }
+</style>

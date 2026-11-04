@@ -8,7 +8,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   const email = formData.get('email')?.toString() ?? '';
   const password = formData.get('password')?.toString() ?? '';
 
-  const supabase = createSupabaseServerClient(cookies);
+  const supabase = createSupabaseServerClient(cookies, request);
   const { error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {

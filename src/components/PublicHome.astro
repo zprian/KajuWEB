@@ -1,0 +1,303 @@
+---
+import Layout from '../layouts/Layout.astro';
+import ScheduleTable from './ScheduleTable.astro';
+import NewsGrid from './NewsGrid.astro';
+import InstagramEmbed from './InstagramEmbed.astro';
+import type { Lang } from '../i18n/utils';
+
+export interface Props {
+  lang: Lang;
+}
+
+const { lang } = Astro.props;
+
+const copy = {
+  es: {
+    title: 'Kajukenbo Catalunya',
+    description: 'Kajukenbo Catalunya · sistema de autodefensa, disciplina y adaptación.',
+    heroEyebrow: 'Sistema de autodefensa · Catalunya',
+    heroTitle: 'Entrena para estar preparado.',
+    heroText: 'Un arte marcial nacido de la mezcla, probado en la realidad y transmitido con respeto.',
+    primary: 'Conoce el método',
+    secondary: 'Ver clases',
+    signal: 'Movimiento · control · criterio',
+    originKicker: '01 / Origen',
+    originTitle: 'Una disciplina con raíces. Una práctica para hoy.',
+    originText: 'Kajukenbo nació en Hawaii entre 1947 y 1949 a partir del encuentro de cinco artistas marciales. Su espíritu sigue siendo directo: conservar lo que funciona, adaptarlo al contexto y entrenarlo con honestidad.',
+    originLink: 'Leer la historia completa',
+    methodKicker: '02 / El método',
+    methodTitle: 'Cinco caminos. Un sistema.',
+    methodText: 'Golpeo, distancia, control y adaptación se encuentran en una práctica exigente, progresiva y abierta a todos los niveles.',
+    methodCards: [
+      ['Realismo', 'Técnicas que parten de situaciones concretas y decisiones claras.'],
+      ['Adaptación', 'Un sistema vivo que aprende, prueba y evoluciona.'],
+      ['Progresión', 'Una ruta de trabajo visible desde el primer cinturón.'],
+      ['Comunidad', 'Entrenar juntos con respeto, rigor y compañerismo.'],
+    ],
+    lineageKicker: '03 / Linaje',
+    lineageTitle: 'De Palama Settlement a Catalunya.',
+    lineageText: 'La historia importa porque da contexto a la práctica. La enseñanza continúa cuando cada generación entrena con criterio y cuida lo que ha recibido.',
+    milestones: [
+      ['1947', 'Los fundadores comienzan a entrenar juntos en Hawaii.'],
+      ['1949', 'El sistema toma forma a través de la prueba y la adaptación.'],
+      ['1950', 'Kajukenbo empieza a enseñarse públicamente.'],
+      ['Hoy', 'Una comunidad internacional mantiene el espíritu en movimiento.'],
+    ],
+    classesKicker: '04 / En el dojo',
+    classesTitle: 'Ven a entrenar.',
+    classesText: 'Clases para descubrir el sistema, mejorar tu condición y construir confianza paso a paso.',
+    classesCta: 'Escríbenos por Instagram',
+    newsKicker: '05 / Actualidad',
+    newsTitle: 'Lo que está pasando.',
+    instagramKicker: '06 / Comunidad',
+    instagramTitle: 'El entrenamiento también continúa fuera del dojo.',
+    instagramCta: 'Seguir en Instagram',
+    finalKicker: '¿Listo para empezar?',
+    finalTitle: 'El primer paso es aparecer.',
+    finalText: 'Conoce el grupo, prueba una clase y descubre si Kajukenbo es para ti.',
+    finalCta: 'Escríbenos por Instagram',
+    belts: 'Una ruta de aprendizaje',
+  },
+  en: {
+    title: 'Kajukenbo Catalunya',
+    description: 'Kajukenbo Catalunya · self-defence, discipline and adaptability.',
+    heroEyebrow: 'Self-defence system · Catalunya',
+    heroTitle: 'Train to be ready.',
+    heroText: 'A martial art born from combination, tested in reality and passed on with respect.',
+    primary: 'Explore the method',
+    secondary: 'View classes',
+    signal: 'Movement · control · judgement',
+    originKicker: '01 / Origin',
+    originTitle: 'A discipline with roots. A practice for today.',
+    originText: 'Kajukenbo was born in Hawaii between 1947 and 1949 through the meeting of five martial artists. Its spirit remains direct: keep what works, adapt it to the context and train it honestly.',
+    originLink: 'Read the full history',
+    methodKicker: '02 / The method',
+    methodTitle: 'Five paths. One system.',
+    methodText: 'Striking, distance, control and adaptation meet in a demanding, progressive practice open to every level.',
+    methodCards: [
+      ['Realism', 'Techniques that start from concrete situations and clear decisions.'],
+      ['Adaptability', 'A living system that tests, learns and evolves.'],
+      ['Progression', 'A visible path from the very first belt.'],
+      ['Community', 'Train together with respect, rigor and camaraderie.'],
+    ],
+    lineageKicker: '03 / Lineage',
+    lineageTitle: 'From Palama Settlement to Catalunya.',
+    lineageText: 'History matters because it gives practice its context. Teaching continues when each generation trains with judgement and takes care of what it has received.',
+    milestones: [
+      ['1947', 'The founders begin training together in Hawaii.'],
+      ['1949', 'The system takes shape through testing and adaptation.'],
+      ['1950', 'Kajukenbo begins to be taught publicly.'],
+      ['Today', 'An international community keeps the spirit moving.'],
+    ],
+    classesKicker: '04 / At the dojo',
+    classesTitle: 'Come train.',
+    classesText: 'Classes to discover the system, improve your fitness and build confidence step by step.',
+    classesCta: 'Message us on Instagram',
+    newsKicker: '05 / Current',
+    newsTitle: 'What is happening.',
+    instagramKicker: '06 / Community',
+    instagramTitle: 'Training continues beyond the dojo.',
+    instagramCta: 'Follow us on Instagram',
+    finalKicker: 'Ready to begin?',
+    finalTitle: 'The first step is showing up.',
+    finalText: 'Meet the group, try a class and discover whether Kajukenbo is for you.',
+    finalCta: 'Message us on Instagram',
+    belts: 'A learning path',
+  },
+  ca: {
+    title: 'Kajukenbo Catalunya',
+    description: 'Kajukenbo Catalunya · autodefensa, disciplina i adaptació.',
+    heroEyebrow: 'Sistema d’autodefensa · Catalunya',
+    heroTitle: 'Entrena per estar preparat.',
+    heroText: 'Un art marcial nascut de la barreja, provat en la realitat i transmès amb respecte.',
+    primary: 'Coneix el mètode',
+    secondary: 'Veure classes',
+    signal: 'Moviment · control · criteri',
+    originKicker: '01 / Origen',
+    originTitle: 'Una disciplina amb arrels. Una pràctica per avui.',
+    originText: 'El Kajukenbo va néixer a Hawaii entre 1947 i 1949 a partir de la trobada de cinc artistes marcials. El seu esperit continua sent directe: conservar el que funciona, adaptar-lo al context i entrenar-lo amb honestedat.',
+    originLink: 'Llegir la història completa',
+    methodKicker: '02 / El mètode',
+    methodTitle: 'Cinc camins. Un sistema.',
+    methodText: 'Cops, distància, control i adaptació es troben en una pràctica exigent, progressiva i oberta a tots els nivells.',
+    methodCards: [
+      ['Realisme', 'Tècniques que parteixen de situacions concretes i decisions clares.'],
+      ['Adaptació', 'Un sistema viu que aprèn, prova i evoluciona.'],
+      ['Progressió', 'Una ruta de treball visible des del primer cinturó.'],
+      ['Comunitat', 'Entrenar junts amb respecte, rigor i companyonia.'],
+    ],
+    lineageKicker: '03 / Llinatge',
+    lineageTitle: 'De Palama Settlement a Catalunya.',
+    lineageText: 'La història importa perquè dona context a la pràctica. L’ensenyament continua quan cada generació entrena amb criteri i cuida el que ha rebut.',
+    milestones: [
+      ['1947', 'Els fundadors comencen a entrenar junts a Hawaii.'],
+      ['1949', 'El sistema pren forma a través de la prova i l’adaptació.'],
+      ['1950', 'El Kajukenbo comença a ensenyar-se públicament.'],
+      ['Avui', 'Una comunitat internacional manté l’esperit en moviment.'],
+    ],
+    classesKicker: '04 / Al dojo',
+    classesTitle: 'Vine a entrenar.',
+    classesText: 'Classes per descobrir el sistema, millorar la teva condició i construir confiança pas a pas.',
+    classesCta: 'Escriu-nos per Instagram',
+    newsKicker: '05 / Actualitat',
+    newsTitle: 'El que està passant.',
+    instagramKicker: '06 / Comunitat',
+    instagramTitle: 'L’entrenament també continua fora del dojo.',
+    instagramCta: 'Segueix-nos a Instagram',
+    finalKicker: 'Preparat per començar?',
+    finalTitle: 'El primer pas és venir.',
+    finalText: 'Coneix el grup, prova una classe i descobreix si el Kajukenbo és per a tu.',
+    finalCta: 'Escriu-nos per Instagram',
+    belts: 'Una ruta d’aprenentatge',
+  },
+}[lang];
+
+const beltColors = ['#f8f8f5', '#f2c94c', '#f97316', '#a855f7', '#3b82f6', '#22c55e', '#8b5a2b', '#111111'];
+---
+
+<Layout title={copy.title} description={copy.description} lang={lang}>
+  <main>
+    <section class="hero-shell relative overflow-hidden">
+      <div class="hero-noise"></div>
+      <div class="mx-auto grid max-w-7xl items-center gap-14 px-5 pb-20 pt-16 sm:px-8 sm:pb-28 sm:pt-24 lg:grid-cols-[1.06fr_.94fr] lg:gap-20 lg:px-10 lg:pt-28">
+        <div class="relative z-10 max-w-2xl">
+          <div class="mb-8 flex items-center gap-3 text-[0.68rem] font-bold uppercase tracking-[0.28em] text-kaju-red">
+            <span class="h-px w-10 bg-kaju-red"></span>
+            {copy.heroEyebrow}
+          </div>
+          <h1 class="max-w-3xl font-heading text-[4.4rem] font-semibold uppercase leading-[.84] tracking-[-.055em] text-white sm:text-[6.6rem] lg:text-[7.8rem]">
+            <span class="block">Kaju</span><span class="block text-kaju-red">kenbo</span>
+          </h1>
+          <p class="mt-8 max-w-xl text-2xl font-medium leading-tight text-white sm:text-3xl">{copy.heroTitle}</p>
+          <p class="mt-5 max-w-lg text-base leading-7 text-white/60 sm:text-lg">{copy.heroText}</p>
+          <div class="mt-9 flex flex-col gap-3 sm:flex-row">
+            <a href="#metodo" class="inline-flex items-center justify-center gap-3 rounded-full bg-kaju-red px-6 py-3.5 text-sm font-bold uppercase tracking-[0.12em] text-white transition hover:bg-red-700">
+              {copy.primary}
+              <span aria-hidden="true">↗</span>
+            </a>
+            <a href="#clases" class="inline-flex items-center justify-center rounded-full border border-white/20 px-6 py-3.5 text-sm font-bold uppercase tracking-[0.12em] text-white transition hover:border-white/60 hover:bg-white/5">
+              {copy.secondary}
+            </a>
+          </div>
+        </div>
+
+        <div class="relative mx-auto w-full max-w-xl lg:mr-0">
+          <div class="absolute -inset-5 rounded-[2.5rem] border border-kaju-red/20"></div>
+          <div class="hero-art relative aspect-[.9] overflow-hidden rounded-[2rem] border border-white/10 bg-[#151517] shadow-2xl shadow-black/40">
+            <div class="absolute inset-0 opacity-30" style="background-image: linear-gradient(rgba(255,255,255,.08) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.08) 1px, transparent 1px); background-size: 42px 42px;"></div>
+            <div class="absolute -right-20 top-14 h-72 w-72 rounded-full border-[2px] border-kaju-red/50 sm:h-96 sm:w-96"></div>
+            <div class="absolute -right-8 top-28 h-56 w-56 rounded-full border border-white/20 sm:h-72 sm:w-72"></div>
+            <div class="absolute bottom-0 left-0 h-1/2 w-full bg-gradient-to-t from-black via-black/30 to-transparent"></div>
+            <div class="absolute left-8 top-8 text-[0.62rem] font-bold uppercase tracking-[0.28em] text-white/40">KSDI / 1947—NOW</div>
+            <div class="absolute bottom-8 left-8 right-8 flex items-end justify-between">
+              <div>
+                <div class="mb-2 text-[0.62rem] font-bold uppercase tracking-[0.28em] text-kaju-red">{copy.signal}</div>
+                <div class="font-heading text-5xl uppercase leading-none tracking-[-.04em] text-white sm:text-6xl">Adapt<br />&amp; endure.</div>
+              </div>
+              <div class="hidden gap-1.5 sm:flex" aria-label={copy.belts}>
+                {beltColors.map((color) => <span class="h-12 w-2 rounded-full" style={`background:${color}`}></span>)}
+              </div>
+            </div>
+            <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rotate-[-18deg] font-heading text-[10rem] font-semibold leading-none text-white/[.035] sm:text-[14rem]">K</div>
+          </div>
+        </div>
+      </div>
+      <div class="mx-auto flex max-w-7xl items-center gap-6 px-5 pb-8 text-[0.65rem] font-bold uppercase tracking-[0.24em] text-white/[.35] sm:px-8 lg:px-10">
+        <span class="h-px flex-1 bg-white/10"></span><span>Self-defence</span><span class="text-kaju-red">·</span><span>Discipline</span><span class="text-kaju-red">·</span><span>Adaptability</span>
+      </div>
+    </section>
+
+    <section id="historia" class="border-y border-white/10 bg-[#111113]">
+      <div class="mx-auto grid max-w-7xl gap-12 px-5 py-20 sm:px-8 lg:grid-cols-[.7fr_1.3fr] lg:gap-24 lg:px-10 lg:py-28">
+        <div>
+          <p class="section-kicker">{copy.originKicker}</p>
+          <div class="mt-8 hidden font-heading text-[10rem] leading-none text-white/[.05] lg:block">01</div>
+        </div>
+        <div>
+          <h2 class="display-title">{copy.originTitle}</h2>
+          <p class="body-copy mt-7 max-w-2xl">{copy.originText}</p>
+          <a href="#linaje" class="mt-8 inline-flex items-center gap-3 text-sm font-bold uppercase tracking-[0.16em] text-white transition hover:text-kaju-red">{copy.originLink} <span class="text-kaju-red">↗</span></a>
+        </div>
+      </div>
+    </section>
+
+    <section id="metodo" class="mx-auto max-w-7xl px-5 py-20 sm:px-8 lg:px-10 lg:py-28">
+      <div class="grid gap-10 lg:grid-cols-[.75fr_1.25fr] lg:gap-24">
+        <div>
+          <p class="section-kicker">{copy.methodKicker}</p>
+          <h2 class="display-title mt-7">{copy.methodTitle}</h2>
+          <p class="body-copy mt-6">{copy.methodText}</p>
+        </div>
+        <div class="grid gap-px overflow-hidden rounded-2xl border border-white/10 bg-white/10 sm:grid-cols-2">
+          {copy.methodCards.map((card, index) => (
+            <article class="group bg-[#141416] p-7 transition hover:bg-[#1b1b1e] sm:p-9">
+              <div class="mb-12 flex items-center justify-between">
+                <span class="font-heading text-4xl text-kaju-red">0{index + 1}</span>
+                <span class="h-2 w-2 rounded-full bg-kaju-red opacity-60 transition group-hover:scale-150 group-hover:opacity-100"></span>
+              </div>
+              <h3 class="font-heading text-3xl uppercase tracking-[-.02em] text-white">{card[0]}</h3>
+              <p class="mt-3 text-sm leading-6 text-white/50">{card[1]}</p>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <section id="linaje" class="bg-kaju-red px-5 py-20 text-white sm:px-8 lg:px-10 lg:py-24">
+      <div class="mx-auto max-w-7xl">
+        <div class="grid gap-10 lg:grid-cols-[.75fr_1.25fr] lg:gap-24">
+          <div><p class="section-kicker section-kicker-light">{copy.lineageKicker}</p><h2 class="display-title mt-7">{copy.lineageTitle}</h2></div>
+          <div><p class="max-w-2xl text-lg leading-8 text-white/80">{copy.lineageText}</p></div>
+        </div>
+        <div class="mt-16 grid border-t border-white/30 sm:grid-cols-4">
+          {copy.milestones.map((milestone) => (
+            <div class="border-b border-white/30 py-6 sm:border-b-0 sm:border-r sm:px-6 sm:first:pl-0 sm:last:border-r-0">
+              <div class="font-heading text-4xl uppercase leading-none">{milestone[0]}</div>
+              <p class="mt-4 text-sm leading-6 text-white/75">{milestone[1]}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <section id="clases" class="mx-auto max-w-7xl px-5 py-20 sm:px-8 lg:px-10 lg:py-28">
+      <div class="mb-10 flex flex-col justify-between gap-5 md:flex-row md:items-end">
+        <div><p class="section-kicker">{copy.classesKicker}</p><h2 class="display-title mt-7">{copy.classesTitle}</h2></div>
+        <p class="body-copy max-w-md">{copy.classesText}</p>
+      </div>
+      <div class="grid gap-8 lg:grid-cols-[1.45fr_.55fr]">
+        <ScheduleTable lang={lang} />
+        <div class="flex flex-col justify-between rounded-2xl bg-[#151517] p-7 sm:p-9">
+          <div><div class="mb-5 h-10 w-10 rounded-full border border-kaju-red/50 p-2"><div class="h-full w-full rounded-full bg-kaju-red"></div></div><p class="text-sm leading-6 text-white/[.55]">{copy.classesText}</p></div>
+          <a href="https://www.instagram.com/kajukenbobcn/" target="_blank" rel="noopener noreferrer" class="mt-10 inline-flex items-center justify-between border-t border-white/10 pt-5 text-sm font-bold uppercase tracking-[0.12em] text-white transition hover:text-kaju-red">{copy.classesCta}<span class="text-kaju-red">↗</span></a>
+        </div>
+      </div>
+    </section>
+
+    <section id="noticias" class="border-t border-white/10 bg-[#111113] px-5 py-20 sm:px-8 lg:px-10 lg:py-28">
+      <div class="mx-auto max-w-7xl">
+        <div class="mb-10 flex items-end justify-between gap-4"><div><p class="section-kicker">{copy.newsKicker}</p><h2 class="display-title mt-7">{copy.newsTitle}</h2></div><span class="hidden text-[0.65rem] font-bold uppercase tracking-[0.24em] text-white/[.35] sm:block">2026 / Journal</span></div>
+        <NewsGrid lang={lang} />
+      </div>
+    </section>
+
+    <section class="mx-auto grid max-w-7xl gap-10 px-5 py-20 sm:px-8 lg:grid-cols-[.85fr_1.15fr] lg:gap-24 lg:px-10 lg:py-28">
+      <div><p class="section-kicker">{copy.instagramKicker}</p><h2 class="display-title mt-7">{copy.instagramTitle}</h2><a href="https://www.instagram.com/kajukenbobcn/" target="_blank" rel="noopener noreferrer" class="mt-8 inline-flex items-center gap-3 text-sm font-bold uppercase tracking-[0.16em] text-white transition hover:text-kaju-red">{copy.instagramCta} <span class="text-kaju-red">↗</span></a></div>
+      <InstagramEmbed lang={lang} />
+    </section>
+
+    <section class="mx-5 mb-20 overflow-hidden rounded-[2rem] bg-[#151517] sm:mx-8 lg:mx-10 lg:mb-28">
+      <div class="relative mx-auto max-w-7xl px-7 py-16 sm:px-12 sm:py-20 lg:px-20"><div class="absolute -right-10 -top-24 h-80 w-80 rounded-full border-[28px] border-kaju-red/20"></div><div class="relative max-w-2xl"><p class="section-kicker">{copy.finalKicker}</p><h2 class="display-title mt-7">{copy.finalTitle}</h2><p class="body-copy mt-6 max-w-lg">{copy.finalText}</p><a href="https://www.instagram.com/kajukenbobcn/" target="_blank" rel="noopener noreferrer" class="mt-8 inline-flex items-center gap-3 rounded-full bg-kaju-red px-6 py-3.5 text-sm font-bold uppercase tracking-[0.12em] text-white transition hover:bg-red-700">{copy.finalCta}<span>↗</span></a></div></div>
+    </section>
+  </main>
+</Layout>
+
+<style>
+  .hero-shell { background: radial-gradient(circle at 74% 14%, rgba(196, 30, 58, .18), transparent 34%), #0b0b0c; }
+  .hero-noise { position: absolute; inset: 0; opacity: .07; pointer-events: none; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.45'/%3E%3C/svg%3E"); }
+  .hero-art { background: linear-gradient(140deg, #222226 0%, #151517 55%, #09090a 100%); }
+  .section-kicker { @apply text-[0.68rem] font-bold uppercase tracking-[0.28em] text-kaju-red; }
+  .section-kicker-light { @apply text-white/70; }
+  .display-title { @apply max-w-3xl font-heading text-4xl font-semibold uppercase leading-[.95] tracking-[-.04em] text-white sm:text-6xl; }
+  .body-copy { @apply text-base leading-7 sm:text-lg sm:leading-8; color: rgb(255 255 255 / .55); }
+</style>

@@ -1,0 +1,131 @@
+---
+export const prerender = false;
+import MembersLayout from '../../layouts/MembersLayout.astro';
+import { getLangFromUrl } from '../../i18n/utils';
+import { createSupabaseServerClient } from '../../lib/supabase-server';
+import { createSupabaseAdminClient } from '../../lib/supabase-admin';
+import { getEffectiveRole } from '../../lib/view-as';
+
+const lang = getLangFromUrl(Astro.url);
+const supabase = createSupabaseServerClient(Astro.cookies, Astro.request);
+const { data: { user } } = await supabase.auth.getUser();
+const { data: profile } = await supabase.from('profiles').select('*').eq('id', user!.id).single();
+const userBelt = profile?.belt ?? 'white';
+const userName = profile ? `${profile.name} ${profile.surname}`.trim() : user!.email ?? '';
+const actualRole = profile?.role ?? 'member';
+const effectiveRole = getEffectiveRole(Astro.cookies, actualRole);
+const canManageAnnouncements = (actualRole === 'admin' || actualRole === 'instructor') && effectiveRole !== 'member';
+
+const copy = lang === 'en'
+  ? { kicker: 'Club announcements', title: 'Stay in the loop.', text: 'Events, reservations, renewals and everything that keeps the club moving.', next: 'What is happening', tShirt: 'Merchandising', event: 'Events & seminars', eventText: 'Register for upcoming activities directly from this page.', license: 'Licences', licenseText: 'Your renewal history is connected to your personal passport.', register: 'Register', size: 'Size', quantity: 'Quantity', registered: 'Registration saved.', error: 'We could not save this registration. Please try again.', noEvents: 'There are no upcoming events yet.', date: 'Date', place: 'Location', noAnnouncements: 'There are no new announcements yet.' }
+  : lang === 'ca'
+    ? { kicker: 'Avisos del club', title: 'No et perdis res.', text: 'Esdeveniments, reserves, renovacions i tot el que fa avançar el club.', next: 'Què està passant', tShirt: 'Marxandatge', event: 'Esdeveniments i seminaris', eventText: 'Inscriu-te a les properes activitats directament des d’aquesta pàgina.', license: 'Llicències', licenseText: 'El teu historial de renovacions està connectat al teu passaport personal.', register: 'Inscriure’m', size: 'Talla', quantity: 'Quantitat', registered: 'Inscripció desada.', error: 'No hem pogut desar la inscripció. Torna-ho a provar.', noEvents: 'Encara no hi ha esdeveniments propers.', date: 'Data', place: 'Lloc', noAnnouncements: 'Encara no hi ha avisos nous.' }
+    : { kicker: 'Avisos del club', title: 'No te pierdas nada.', text: 'Eventos, reservas, renovaciones y todo lo que mantiene al club en movimiento.', next: 'Qué está pasando', tShirt: 'Merchandising', event: 'Eventos y seminarios', eventText: 'Inscríbete en las próximas actividades directamente desde esta página.', license: 'Licencias', licenseText: 'Tu historial de renovaciones está conectado a tu pasaporte personal.', register: 'Inscribirme', size: 'Talla', quantity: 'Cantidad', registered: 'Inscripción guardada.', error: 'No se ha podido guardar esta inscripción. Inténtalo de nuevo.', noEvents: 'Todavía no hay próximos eventos.', date: 'Fecha', place: 'Ubicación', noAnnouncements: 'Todavía no hay avisos nuevos.' };
+
+const editorCopy = lang === 'en'
+  ? { title: 'Create an announcement', text: 'Publish an event or merchandise reservation with an image and registration options.', kind: 'Type', general: 'Announcement / question', tshirt: 'Merchandise', event: 'Event', license: 'License', titleEs: 'Title (Spanish)', titleEn: 'Title (English)', titleCa: 'Title (Catalan)', bodyEs: 'Message (Spanish)', bodyEn: 'Message (English)', bodyCa: 'Message (Catalan)', starts: 'Date and time', location: 'Location', image: 'Image', itemName: 'Item name', itemSizes: 'Sizes, separated by commas', addItem: 'Add item', pinned: 'Pin to the top', published: 'Publish now', create: 'Create announcement', created: 'Announcement created.', failed: 'The announcement could not be created.' }
+  : lang === 'ca'
+    ? { title: 'Crear un avís', text: 'Publica un esdeveniment o una reserva de marxandatge amb imatge i opcions de registre.', kind: 'Tipus', general: 'Avís / pregunta', tshirt: 'Marxandatge', event: 'Esdeveniment', license: 'Llicència', titleEs: 'Títol (castellà)', titleEn: 'Títol (anglès)', titleCa: 'Títol (català)', bodyEs: 'Missatge (castellà)', bodyEn: 'Missatge (anglès)', bodyCa: 'Missatge (català)', starts: 'Data i hora', location: 'Lloc', image: 'Imatge', itemName: 'Nom de l’article', itemSizes: 'Talles separades per comes', addItem: 'Afegir article', pinned: 'Fixar a dalt', published: 'Publicar ara', create: 'Crear avís', created: 'Avís creat.', failed: 'No s’ha pogut crear l’avís.' }
+    : { title: 'Crear un aviso', text: 'Publica un evento o una reserva de merchandising con imagen y opciones de registro.', kind: 'Tipo', general: 'Aviso / pregunta', tshirt: 'Merchandising', event: 'Evento', license: 'Licencia', titleEs: 'Título (español)', titleEn: 'Título (inglés)', titleCa: 'Título (catalán)', bodyEs: 'Mensaje (español)', bodyEn: 'Mensaje (inglés)', bodyCa: 'Mensaje (catalán)', starts: 'Fecha y hora', location: 'Ubicación', image: 'Imagen', itemName: 'Nombre del artículo', itemSizes: 'Tallas separadas por comas', addItem: 'Añadir artículo', pinned: 'Fijar arriba', published: 'Publicar ahora', create: 'Crear aviso', created: 'Aviso creado.', failed: 'No se ha podido crear el aviso.' };
+
+const registrationState = Astro.url.searchParams.get('registered');
+const createdState = Astro.url.searchParams.get('created');
+let adminClient: ReturnType<typeof createSupabaseAdminClient> | null = null;
+try { adminClient = createSupabaseAdminClient(); } catch { /* media upload remains unavailable without the server key */ }
+
+function parseItems(value: string | null | undefined) {
+  try {
+    const parsed = JSON.parse(value || '[]');
+    return Array.isArray(parsed) ? parsed.filter((item) => item && typeof item.name === 'string' && Array.isArray(item.sizes)) : [];
+  } catch { return []; }
+}
+
+async function uploadImage(fileValue: FormDataEntryValue | null) {
+  if (!adminClient || !(fileValue instanceof File) || fileValue.size === 0) return null;
+  const extension = (fileValue.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
+  const bucket = 'announcement-media';
+  const bucketResult = await adminClient.storage.createBucket(bucket, { public: false });
+  if (bucketResult.error && !bucketResult.error.message.toLowerCase().includes('already exists')) throw bucketResult.error;
+  const path = `${user!.id}/${crypto.randomUUID()}.${extension}`;
+  const upload = await adminClient.storage.from(bucket).upload(path, Buffer.from(await fileValue.arrayBuffer()), { contentType: fileValue.type || 'image/jpeg', upsert: false });
+  if (upload.error) throw upload.error;
+  return path;
+}
+
+if (Astro.request.method === 'POST') {
+  const formData = await Astro.request.formData();
+  const action = formData.get('action')?.toString() ?? '';
+
+  if (action === 'create-announcement' && canManageAnnouncements) {
+    try {
+      const kind = ['general', 'tshirt', 'event', 'license'].includes(formData.get('kind')?.toString() ?? '') ? formData.get('kind')?.toString() ?? 'general' : 'general';
+      const startsAt = formData.get('starts_at')?.toString() ? new Date(formData.get('starts_at')!.toString()).toISOString() : new Date().toISOString();
+      const imagePath = await uploadImage(formData.get('image'));
+      const merchandiseItems = kind === 'tshirt' ? parseItems(formData.get('merchandise_items')?.toString()) : [];
+      let eventId: string | null = null;
+
+      if (kind === 'event' || kind === 'tshirt') {
+        const availableSizes = [...new Set(merchandiseItems.flatMap((item) => item.sizes))];
+        const eventInsert = await supabase.from('events').insert({ title_es: formData.get('title_es')?.toString().trim() ?? '', title_en: formData.get('title_en')?.toString().trim() ?? '', title_ca: formData.get('title_ca')?.toString().trim() ?? '', description_es: formData.get('body_es')?.toString().trim() ?? '', description_en: formData.get('body_en')?.toString().trim() ?? '', description_ca: formData.get('body_ca')?.toString().trim() ?? '', starts_at: startsAt, location: formData.get('location')?.toString().trim() || null, image_path: imagePath, shirt_sizes_enabled: kind === 'tshirt', available_sizes: availableSizes.length ? availableSizes : ['XS', 'S', 'M', 'L', 'XL', 'XXL'], merchandise_items: merchandiseItems, published: formData.get('published') === '1', created_by: user!.id }).select('id').single();
+        if (eventInsert.error) throw eventInsert.error;
+        eventId = eventInsert.data.id;
+      }
+
+      const announcementInsert = await supabase.from('announcements').insert({ kind, title_es: formData.get('title_es')?.toString().trim() ?? '', title_en: formData.get('title_en')?.toString().trim() ?? '', title_ca: formData.get('title_ca')?.toString().trim() ?? '', body_es: formData.get('body_es')?.toString().trim() ?? '', body_en: formData.get('body_en')?.toString().trim() ?? '', body_ca: formData.get('body_ca')?.toString().trim() ?? '', event_id: eventId, image_path: imagePath, pinned: formData.get('pinned') === '1', published: formData.get('published') === '1', starts_at: startsAt, created_by: user!.id });
+      if (announcementInsert.error) throw announcementInsert.error;
+      return Astro.redirect(`${Astro.url.pathname}?created=1`);
+    } catch {
+      return Astro.redirect(`${Astro.url.pathname}?created=0`);
+    }
+  }
+
+  const eventId = formData.get('event_id')?.toString() ?? '';
+  if (eventId) {
+    const merchandiseItems = parseItems(formData.get('merchandise_items')?.toString());
+    const shirtSize = formData.get('shirt_size')?.toString() || null;
+    const { error } = await supabase.from('event_registrations').upsert({ event_id: eventId, profile_id: user!.id, shirt_size: shirtSize, merchandise_items: merchandiseItems, status: 'registered' }, { onConflict: 'event_id,profile_id' });
+    return Astro.redirect(`${Astro.url.pathname}?registered=${error ? '0' : '1'}`);
+  }
+}
+
+const now = new Date().toISOString();
+const { data: events } = await supabase.from('events').select('*').eq('published', true).gte('starts_at', now).order('starts_at', { ascending: true });
+const { data: announcements } = await supabase.from('announcements').select('*').eq('published', true).order('pinned', { ascending: false }).order('starts_at', { ascending: false });
+const upcomingEvents = events ?? [];
+const publishedAnnouncements = announcements ?? [];
+const eventImageUrls = new Map<string, string>();
+const announcementImageUrls = new Map<string, string>();
+if (adminClient) {
+  for (const event of upcomingEvents) if (event.image_path) { const signed = await adminClient.storage.from('announcement-media').createSignedUrl(event.image_path, 60 * 60); if (signed.data?.signedUrl) eventImageUrls.set(event.id, signed.data.signedUrl); }
+  for (const announcement of publishedAnnouncements) if (announcement.image_path) { const signed = await adminClient.storage.from('announcement-media').createSignedUrl(announcement.image_path, 60 * 60); if (signed.data?.signedUrl) announcementImageUrls.set(announcement.id, signed.data.signedUrl); }
+}
+---
+
+<MembersLayout title={copy.kicker} lang={lang} userName={userName} belt={userBelt} role={profile?.role} isAdmin={profile?.role === 'admin' || profile?.role === 'instructor'}>
+  <div class="space-y-10">
+    <div><p class="text-[0.68rem] font-bold uppercase tracking-[0.28em] text-kaju-red">{copy.kicker}</p><h1 class="mt-4 max-w-2xl font-heading text-5xl uppercase leading-none tracking-[-.03em] text-white sm:text-7xl">{copy.title}</h1><p class="mt-5 max-w-2xl text-base leading-7 text-white/50">{copy.text}</p></div>
+    {registrationState === '1' && <div class="rounded-2xl border border-green-500/40 bg-green-500/10 px-5 py-4 text-sm text-green-300">{copy.registered}</div>}
+    {registrationState === '0' && <div class="rounded-2xl border border-red-500/40 bg-red-500/10 px-5 py-4 text-sm text-red-300">{copy.error}</div>}
+    {createdState === '1' && <div class="rounded-2xl border border-green-500/40 bg-green-500/10 px-5 py-4 text-sm text-green-300">{editorCopy.created}</div>}
+    {createdState === '0' && <div class="rounded-2xl border border-red-500/40 bg-red-500/10 px-5 py-4 text-sm text-red-300">{editorCopy.failed}</div>}
+
+    {canManageAnnouncements && <section class="rounded-2xl border border-kaju-red/30 bg-kaju-red/10 p-6 sm:p-8"><div><p class="text-[0.68rem] font-bold uppercase tracking-[0.2em] text-kaju-red">{editorCopy.title}</p><p class="mt-2 max-w-2xl text-sm leading-6 text-white/55">{editorCopy.text}</p></div><form method="POST" enctype="multipart/form-data" data-announcement-form class="mt-6 space-y-4"><input type="hidden" name="action" value="create-announcement" /><div class="grid gap-4 sm:grid-cols-2"><label class="text-xs text-white/55">{editorCopy.kind}<select name="kind" class="mt-1.5 w-full rounded-xl border border-white/10 bg-[#151517] px-3 py-2.5 text-sm text-white"><option value="general">{editorCopy.general}</option><option value="tshirt">{editorCopy.tshirt}</option><option value="event">{editorCopy.event}</option><option value="license">{editorCopy.license}</option></select></label><label class="text-xs text-white/55">{editorCopy.starts}<input name="starts_at" type="datetime-local" class="mt-1.5 w-full rounded-xl border border-white/10 bg-[#151517] px-3 py-2.5 text-sm text-white" /></label></div><div class="grid gap-4 sm:grid-cols-2"><label class="text-xs text-white/55">{editorCopy.location}<input name="location" class="mt-1.5 w-full rounded-xl border border-white/10 bg-[#151517] px-3 py-2.5 text-sm text-white" /></label><label class="text-xs text-white/55">{editorCopy.image}<input name="image" type="file" accept="image/*" class="mt-1.5 block w-full rounded-xl border border-white/10 bg-[#151517] px-3 py-2 text-sm text-white file:mr-3 file:rounded-lg file:border-0 file:bg-kaju-red file:px-3 file:py-2 file:text-white" /></label></div><div class="grid gap-4 sm:grid-cols-3"><input name="title_es" required placeholder={editorCopy.titleEs} class="rounded-xl border border-white/10 bg-[#151517] px-3 py-2.5 text-sm text-white placeholder:text-white/35" /><input name="title_en" required placeholder={editorCopy.titleEn} class="rounded-xl border border-white/10 bg-[#151517] px-3 py-2.5 text-sm text-white placeholder:text-white/35" /><input name="title_ca" required placeholder={editorCopy.titleCa} class="rounded-xl border border-white/10 bg-[#151517] px-3 py-2.5 text-sm text-white placeholder:text-white/35" /></div><div class="grid gap-4 sm:grid-cols-3"><textarea name="body_es" required placeholder={editorCopy.bodyEs} rows="4" class="rounded-xl border border-white/10 bg-[#151517] px-3 py-2.5 text-sm text-white placeholder:text-white/35"></textarea><textarea name="body_en" required placeholder={editorCopy.bodyEn} rows="4" class="rounded-xl border border-white/10 bg-[#151517] px-3 py-2.5 text-sm text-white placeholder:text-white/35"></textarea><textarea name="body_ca" required placeholder={editorCopy.bodyCa} rows="4" class="rounded-xl border border-white/10 bg-[#151517] px-3 py-2.5 text-sm text-white placeholder:text-white/35"></textarea></div><div class="rounded-xl border border-white/10 bg-black/10 p-4"><div class="flex items-center justify-between gap-3"><p class="text-xs font-bold uppercase tracking-[0.12em] text-white/55">{editorCopy.tshirt}</p><button type="button" data-add-item class="rounded-full border border-white/15 px-3 py-1.5 text-xs text-white/65">{editorCopy.addItem}</button></div><input type="hidden" name="merchandise_items" data-items-json value="[]" /><div data-item-rows class="mt-3 space-y-2"></div><p class="mt-2 text-xs text-white/35">Añade artículos solo para avisos de merchandising; por ejemplo, Camiseta con tallas S, M, L.</p></div><div class="flex flex-wrap items-center gap-5 text-xs text-white/55"><label class="flex items-center gap-2"><input type="hidden" name="pinned" value="0" /><input type="checkbox" name="pinned" value="1" class="accent-red-600" />{editorCopy.pinned}</label><label class="flex items-center gap-2"><input type="hidden" name="published" value="0" /><input type="checkbox" name="published" value="1" checked class="accent-red-600" />{editorCopy.published}</label><button type="submit" class="rounded-full bg-kaju-red px-5 py-3 text-xs font-bold uppercase tracking-[0.1em] text-white">{editorCopy.create}</button></div></form></section>}
+
+    <section><p class="mb-4 text-[0.68rem] font-bold uppercase tracking-[0.22em] text-white/45">{copy.next}</p>{upcomingEvents.length === 0 ? <div class="rounded-2xl border border-dashed border-white/15 bg-white/[.02] p-6 text-sm leading-6 text-white/40">{copy.noEvents}</div> : <div class="grid gap-4">{upcomingEvents.map((event) => { const items = Array.isArray(event.merchandise_items) ? event.merchandise_items : []; return <article class="overflow-hidden rounded-2xl border border-kaju-red/40 bg-kaju-red/10 p-6">{eventImageUrls.get(event.id) && <img src={eventImageUrls.get(event.id)} alt="" class="mb-6 max-h-72 w-full rounded-xl object-cover" />}<div class="flex flex-col justify-between gap-5 lg:flex-row lg:items-end"><div><span class="text-[0.65rem] font-bold uppercase tracking-[0.18em] text-kaju-red">{items.length ? copy.tShirt : copy.event}</span><h2 class="mt-4 font-heading text-3xl uppercase text-white">{event[`title_${lang}`] ?? event.title_es}</h2><p class="mt-3 max-w-2xl text-sm leading-6 text-white/55">{event[`description_${lang}`] ?? event.description_es}</p><p class="mt-4 text-xs uppercase tracking-[0.12em] text-white/45">{copy.date}: {new Date(event.starts_at).toLocaleString(lang === 'en' ? 'en-GB' : 'es-ES', { dateStyle: 'medium', timeStyle: 'short' })}{event.location ? ` · ${copy.place}: ${event.location}` : ''}</p></div><form method="POST" data-merch-registration={items.length ? 'true' : undefined} class="w-full rounded-xl border border-white/10 bg-black/10 p-4 lg:max-w-xs"><input type="hidden" name="event_id" value={event.id} />{items.length ? <><input type="hidden" name="merchandise_items" data-merch-output value="[]" />{items.map((item, index) => <div class="mb-3 rounded-lg border border-white/10 p-3" data-merch-line><p class="text-xs font-bold text-white">{item.name}</p><div class="mt-2 grid grid-cols-2 gap-2"><select data-merch-size class="rounded-lg border border-white/10 bg-[#151517] px-2 py-2 text-xs text-white"><option value="">{copy.size}</option>{item.sizes.map((size: string) => <option value={size}>{size}</option>)}</select><input data-merch-quantity type="number" min="0" value="0" class="rounded-lg border border-white/10 bg-[#151517] px-2 py-2 text-xs text-white" aria-label={`${copy.quantity} ${item.name}`} /></div><input type="hidden" data-merch-name value={item.name} /></div>)}<button type="submit" class="w-full rounded-full bg-kaju-red px-4 py-3 text-xs font-bold uppercase tracking-[0.12em] text-white transition hover:bg-red-700">{copy.register}</button></> : <><p class="mb-3 text-xs text-white/45">{copy.eventText}</p><button type="submit" class="w-full rounded-full bg-kaju-red px-4 py-3 text-xs font-bold uppercase tracking-[0.12em] text-white transition hover:bg-red-700">{copy.register}</button></>}</form></div></article>; })}</div>}</section>
+
+    <section><p class="mb-4 text-[0.68rem] font-bold uppercase tracking-[0.22em] text-white/45">{copy.kicker}</p>{publishedAnnouncements.length === 0 ? <div class="rounded-2xl border border-dashed border-white/15 bg-white/[.02] p-6 text-sm leading-6 text-white/40">{copy.noAnnouncements}</div> : <div class="grid gap-4 md:grid-cols-2">{publishedAnnouncements.map((announcement) => <article class="overflow-hidden rounded-2xl border border-white/10 bg-[#151517] p-6">{announcementImageUrls.get(announcement.id) && <img src={announcementImageUrls.get(announcement.id)} alt="" class="mb-5 max-h-64 w-full rounded-xl object-cover" />}<span class="text-[0.65rem] font-bold uppercase tracking-[0.18em] text-kaju-red">{announcement.kind}</span><h2 class="mt-8 font-heading text-3xl uppercase text-white">{announcement[`title_${lang}`] ?? announcement.title_es}</h2><p class="mt-3 text-sm leading-6 text-white/55">{announcement[`body_${lang}`] ?? announcement.body_es}</p></article>)}</div>}</section>
+
+    <section class="grid gap-4 md:grid-cols-2"><article class="rounded-2xl border border-white/10 bg-[#151517] p-6"><span class="text-[0.65rem] font-bold uppercase tracking-[0.18em] text-white/35">03 / Status</span><h2 class="mt-12 font-heading text-3xl uppercase text-white">{copy.license}</h2><p class="mt-3 text-sm leading-6 text-white/45">{copy.licenseText}</p><a href="/members/profile" class="mt-6 inline-flex text-xs font-bold uppercase tracking-[0.12em] text-kaju-red">{lang === 'en' ? 'View my passport' : lang === 'ca' ? 'Veure el meu passaport' : 'Ver mi pasaporte'} →</a></article><article class="rounded-2xl border border-white/10 bg-[#151517] p-6"><span class="text-[0.65rem] font-bold uppercase tracking-[0.18em] text-white/35">04 / Info</span><h2 class="mt-12 font-heading text-3xl uppercase text-white">{copy.event}</h2><p class="mt-3 text-sm leading-6 text-white/45">{copy.eventText}</p></article></section>
+  </div>
+</MembersLayout>
+
+<script>
+  const itemForm = document.querySelector<HTMLFormElement>('[data-announcement-form]');
+  const itemRows = document.querySelector<HTMLElement>('[data-item-rows]');
+  const itemJson = document.querySelector<HTMLInputElement>('[data-items-json]');
+  const addItem = document.querySelector<HTMLButtonElement>('[data-add-item]');
+  function syncItems() { if (!itemJson || !itemRows) return; const items = Array.from(itemRows.querySelectorAll<HTMLElement>('[data-builder-row]')).map((row) => ({ name: row.querySelector<HTMLInputElement>('[data-item-name]')?.value.trim() ?? '', sizes: (row.querySelector<HTMLInputElement>('[data-item-sizes]')?.value ?? '').split(',').map((size) => size.trim()).filter(Boolean) })).filter((item) => item.name); itemJson.value = JSON.stringify(items); }
+  addItem?.addEventListener('click', () => { if (!itemRows) return; const row = document.createElement('div'); row.dataset.builderRow = ''; row.className = 'grid grid-cols-[1fr_1fr_auto] gap-2'; row.innerHTML = `<input data-item-name class="rounded-lg border border-white/10 bg-[#151517] px-3 py-2 text-sm text-white" placeholder="Artículo" /><input data-item-sizes class="rounded-lg border border-white/10 bg-[#151517] px-3 py-2 text-sm text-white" placeholder="S, M, L" /><button type="button" data-remove-item class="rounded-lg border border-white/10 px-3 text-white/55">×</button>`; row.querySelector('[data-remove-item]')?.addEventListener('click', () => { row.remove(); syncItems(); }); itemRows.append(row); syncItems(); });
+  itemForm?.addEventListener('submit', syncItems);
+  document.querySelectorAll<HTMLFormElement>('[data-merch-registration]').forEach((form) => form.addEventListener('submit', () => { const output = form.querySelector<HTMLInputElement>('[data-merch-output]'); if (!output) return; output.value = JSON.stringify(Array.from(form.querySelectorAll<HTMLElement>('[data-merch-line]')).map((line) => ({ name: line.querySelector<HTMLInputElement>('[data-merch-name]')?.value ?? '', size: line.querySelector<HTMLSelectElement>('[data-merch-size]')?.value ?? '', quantity: Number(line.querySelector<HTMLInputElement>('[data-merch-quantity]')?.value ?? 0) })).filter((item) => item.size && item.quantity > 0)); }));
+</script>
