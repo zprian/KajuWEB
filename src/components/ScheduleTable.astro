@@ -8,6 +8,7 @@ export interface Props {
     time: string;
     class_es: string; class_en: string; class_ca: string;
     location: string;
+    locationUrl?: string;
   }[];
 }
 
@@ -18,8 +19,10 @@ const dayKey = `day_${lang}` as const;
 const classKey = `class_${lang}` as const;
 
 const defaultEntries = [
-  { day_es: 'Martes', day_en: 'Tuesday', day_ca: 'Dimarts', time: '19:00 – 20:30', class_es: 'Adultos – Todos los niveles', class_en: 'Adults – All levels', class_ca: 'Adults – Tots els nivells', location: 'Dojo Principal' },
-  { day_es: 'Jueves', day_en: 'Thursday', day_ca: 'Dijous', time: '19:00 – 20:30', class_es: 'Adultos – Todos los niveles', class_en: 'Adults – All levels', class_ca: 'Adults – Tots els nivells', location: 'Dojo Principal' },
+  { day_es: 'Martes', day_en: 'Tuesday', day_ca: 'Dimarts', time: '12:00 – 13:00', class_es: 'Adultos – Todos los niveles', class_en: 'Adults – All levels', class_ca: 'Adults – Tots els nivells', location: 'Esportiu Badrena', locationUrl: 'https://www.esportiubadrena.com/kajukenbo' },
+  { day_es: 'Martes', day_en: 'Tuesday', day_ca: 'Dimarts', time: '19:00 – 20:30', class_es: 'Adultos – Todos los niveles', class_en: 'Adults – All levels', class_ca: 'Adults – Tots els nivells', location: 'Esportiu Badrena', locationUrl: 'https://www.esportiubadrena.com/kajukenbo' },
+  { day_es: 'Jueves', day_en: 'Thursday', day_ca: 'Dijous', time: '12:00 – 13:00', class_es: 'Adultos – Todos los niveles', class_en: 'Adults – All levels', class_ca: 'Adults – Tots els nivells', location: 'Esportiu Badrena', locationUrl: 'https://www.esportiubadrena.com/kajukenbo' },
+  { day_es: 'Jueves', day_en: 'Thursday', day_ca: 'Dijous', time: '19:00 – 20:30', class_es: 'Adultos – Todos los niveles', class_en: 'Adults – All levels', class_ca: 'Adults – Tots els nivells', location: 'Esportiu Badrena', locationUrl: 'https://www.esportiubadrena.com/kajukenbo' },
 ];
 
 const rows = entries.length > 0 ? entries : defaultEntries;
@@ -41,7 +44,11 @@ const rows = entries.length > 0 ? entries : defaultEntries;
           <td class="px-4 py-3 font-medium text-white">{(row as any)[dayKey] ?? row.day_es}</td>
           <td class="px-4 py-3 text-gray-300 whitespace-nowrap">{row.time}</td>
           <td class="px-4 py-3 text-gray-300">{(row as any)[classKey] ?? row.class_es}</td>
-          <td class="px-4 py-3 text-gray-400 hidden sm:table-cell">{row.location}</td>
+          <td class="px-4 py-3 text-gray-400 hidden sm:table-cell">
+            {row.locationUrl ? (
+              <a href={row.locationUrl} target="_blank" rel="noopener noreferrer" class="transition hover:text-white hover:underline">{row.location}</a>
+            ) : row.location}
+          </td>
         </tr>
       ))}
     </tbody>
